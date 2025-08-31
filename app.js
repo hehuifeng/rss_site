@@ -92,30 +92,33 @@ function bindEvents() {
   const $ = (id) => document.getElementById(id);
 
   // 搜索按钮：只按关键词触发
-  $('search').onclick = () => { PAGE = 1; runSearch(); };
+  const searchBtn = $('search');
+  if (searchBtn) searchBtn.onclick = () => { PAGE = 1; runSearch(); };
 
   // 关键词回车也触发
-  $('q').addEventListener('keydown', (e) => {
+  const q = $('q');
+  if (q) q.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); PAGE = 1; runSearch(); }
   });
 
-  // 期刊/日期改变即筛选（无需点“搜索”）
-  $('journal').addEventListener('change', () => { PAGE = 1; runSearch(); });
-  $('date_from').addEventListener('change', () => { PAGE = 1; runSearch(); });
-  $('date_to').addEventListener('change', () => { PAGE = 1; runSearch(); });
+  // 期刊/日期改变即筛选
+  const j = $('journal'); if (j) j.addEventListener('change', () => { PAGE = 1; runSearch(); });
+  const df = $('date_from'); if (df) df.addEventListener('change', () => { PAGE = 1; runSearch(); });
+  const dt = $('date_to');   if (dt) dt.addEventListener('change', () => { PAGE = 1; runSearch(); });
 
   // 重置
-  $('reset').onclick = () => {
-    $('q').value = '';
-    $('journal').value = '';
-    $('date_from').value = '';
-    $('date_to').value = '';
+  const reset = $('reset');
+  if (reset) reset.onclick = () => {
+    if (q) q.value = '';
+    if (j) j.value = '';
+    if (df) df.value = '';
+    if (dt) dt.value = '';
     PAGE = 1; runSearch();
   };
 
   // 分页
-  $('prev').onclick = () => { if (PAGE>1) { PAGE--; runSearch(); } };
-  $('next').onclick = () => { PAGE++; runSearch(); };
+  const prev = $('prev'); if (prev) prev.onclick = () => { if (PAGE>1) { PAGE--; runSearch(); } };
+  const next = $('next'); if (next) next.onclick = () => { PAGE++; runSearch(); };
 
   // 双语开关
   const biBtn = $('bilingual-toggle');
@@ -129,7 +132,7 @@ function bindEvents() {
     });
   }
 
-  // 快捷时间按钮（近3天/近7天/近30天）
+  // 快捷时间按钮
   document.querySelectorAll('.range-btn').forEach(btn => {
     btn.addEventListener('click', () => setQuickRange(btn.dataset.range));
   });
@@ -166,10 +169,12 @@ function setQuickRange(range) {
 }
 
 function buildWhere() {
-  const kw = document.getElementById('q').value.trim();
-  const journal = document.getElementById('journal').value;
-  const df = document.getElementById('date_from').value;
-  const dt = document.getElementById('date_to').value;
+  const getVal = (id) => (document.getElementById(id)?.value ?? '').trim();
+
+  const kw = getVal('q');
+  const journal = getVal('journal');
+  const df = getVal('date_from');
+  const dt = getVal('date_to');
 
   const clauses = [];
   const params = {};

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>Paper Tracker (Self-contained)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Static paper tracker using sql.js locally (no CDN)">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Paper Tracker</h1>
+    <div class="controls">
+      <input id="q" placeholder="关键词：标题/作者/摘要…" />
+      <select id="journal"><option value="">全部期刊/来源</option></select>
+      <select id="lang"><option value="">全部语言</option><option value="zh">中文</option><option value="en">英文</option></select>
+      <input id="date_from" type="date" />
+      <input id="date_to" type="date" />
+      <button id="search">搜索</button>
+      <button id="reset">重置</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="stats"></div>
+    <div id="list"></div>
+    <div class="pager">
+      <button id="prev">上一页</button>
+      <span id="pageinfo"></span>
+      <button id="next">下一页</button>
+    </div>
+  </main>
+
+  <footer>
+    <small>本站点自包含（sql-wasm.js / sql-wasm.wasm 本地加载），可直接部署到 GitHub Pages。</small>
+  </footer>
+
+  <!-- 本地文件：请将 sql-wasm.js 与 sql-wasm.wasm 放在根目录 -->
+  <script src="./sql-wasm.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

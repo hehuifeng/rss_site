@@ -273,7 +273,14 @@ function render(items, kw) {
   }).join('');
 }
 
-init().catch(err => {
+function showErr(err){
   const el = document.getElementById('list');
-  el.innerHTML = `<pre>${escapeHtml(err.stack || String(err))}</pre>`;
-});
+  if (el) el.innerHTML = `<pre>${escapeHtml(err.stack || String(err))}</pre>`;
+  else console.error(err);
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', () => init().catch(showErr));
+} else {
+  init().catch(showErr);
+}

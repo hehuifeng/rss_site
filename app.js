@@ -9,7 +9,7 @@ const state = {
   bilingual: false, // 双语显示开关
 };
 
-// self-contained: load local wasm by default; fallback to CDN if sql-wasm.js not loaded
+// ===== 自包含 sql.js 加载 =====
 function locateFile(file) { return './' + file; }
 
 async function ensureSqlJs() {
@@ -26,8 +26,9 @@ async function ensureSqlJs() {
   }
 }
 
+// ===== 工具函数 =====
 function fmtDate(s){ if(!s) return ''; const m = /^(\d{4}-\d{2}-\d{2})/.exec(s); return m? m[1] : s; }
-function escapeHtml(str){ return (str||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) }
+function escapeHtml(str){ return (str||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[m])) }
 function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /** 在字符串中高亮关键词（大小写不敏感，多词空格分隔）并保持 XSS 安全 */
@@ -35,14 +36,10 @@ function highlightAndEscape(text, kw){
   const s = String(text || '');
   const q = String(kw || '').trim();
   if (!q) return escapeHtml(s);
-
-  // 把空白分隔的词合成一个正则
   const terms = q.split(/\s+/).filter(Boolean);
   if (!terms.length) return escapeHtml(s);
   const pattern = terms.map(escapeRegExp).join('|');
   const re = new RegExp(`(${pattern})`, 'gi');
-
-  // 用哨兵包裹匹配，再整体转义，最后把哨兵替换成 <mark>
   const marked = s.replace(re, '[[[H]]]' + '$1' + '[[[/H]]]');
   let esc = escapeHtml(marked);
   esc = esc.replace(/\[\[\[H\]\]\]/g, '<mark>').replace(/\[\[\[\/H\]\]\]/g, '</mark>');
@@ -58,6 +55,30 @@ function query(sql, params = {}) {
   return rows;
 }
 
+// 稳定标签颜色（HSL）——同一 tag 恒定颜色
+function hashHsl(tag) {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  const sat = 55 + (h % 20); // 55–74%
+  const light = 46 + (h % 10); // 46–55%
+  return `hsl(${hue} ${sat}% ${light}%)`;
+}
+
+// 解析 topic_tag 字段为 tag 数组（支持中文逗号/英文逗号/分号/竖线/空白）
+function parseTags(raw) {
+  if (!raw) return [];
+  return Array.from(
+    new Set(
+      String(raw)
+        .split(/[,;｜|，；/]+|\s+/g)
+        .map(t => t.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+// ===== 入口 =====
 async function init() {
   await ensureSqlJs();
   SQL = await initSqlJs({ locateFile });
@@ -68,6 +89,7 @@ async function init() {
 
   await populateFilters();
   bindEvents();
+  trackVisits(); // 记录访问量
   runSearch();
 }
 
@@ -86,8 +108,31 @@ async function populateFilters() {
     opt.value = j; opt.textContent = j;
     selJ.appendChild(opt);
   });
+
+  // tags（从 topic_tag 聚合去重）
+  const rows = query(`
+    SELECT topic_tag FROM articles
+    WHERE topic_tag IS NOT NULL AND TRIM(topic_tag) <> ''
+  `);
+  const all = new Set();
+  rows.forEach(r => parseTags(r.topic_tag).forEach(t => all.add(t)));
+  const tags = Array.from(all).sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
+
+  const selT = document.getElementById('tag');
+  // 在多选里放一个“全部（清空选择）”提示项（disabled）
+  const ph = document.createElement('option');
+  ph.textContent = '（按住 Ctrl/⌘ 可多选；不选=全部）';
+  ph.disabled = true;
+  selT.appendChild(ph);
+
+  tags.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    selT.appendChild(opt);
+  });
 }
 
+// ===== 事件绑定（全改为即时触发 & 去掉搜索按钮）=====
 function bindEvents() {
   const $ = (id) => document.getElementById(id);
 
@@ -138,22 +183,21 @@ function bindEvents() {
   });
 }
 
+// 简易防抖
+function debounce(fn, wait=200){
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(()=>fn.apply(null,args), wait); };
+}
+
 // 设置快捷时间区间并直接搜索
 function setQuickRange(range) {
   const $ = (id) => document.getElementById(id);
-
-  // 以“本地时区的今天”作为结束（包含当天）
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const start = new Date(end);
 
-  if (range === '3d') {
-    start.setDate(end.getDate() - 2);
-  } else if (range === '7d') {
-    start.setDate(end.getDate() - 6);
-  } else if (range === '30d') {
-    start.setDate(end.getDate() - 29);
-  }
+  if (range === '3d') start.setDate(end.getDate() - 2);
+  else if (range === '7d') start.setDate(end.getDate() - 6);
+  else if (range === '30d') start.setDate(end.getDate() - 29);
 
   const fmtLocal = (d) => {
     const y = d.getFullYear();
@@ -168,6 +212,7 @@ function setQuickRange(range) {
   PAGE = 1; runSearch();
 }
 
+// 读取筛选条件并构造 WHERE
 function buildWhere() {
   const getVal = (id) => (document.getElementById(id)?.value ?? '').trim();
 
@@ -194,8 +239,15 @@ function buildWhere() {
   if (df) { clauses.push("(pub_date >= :df)"); params[":df"] = df; }
   if (dt) { clauses.push("(pub_date <= :dt)"); params[":dt"] = dt; }
 
+  // tag 过滤：每个被选中的 tag 都需要在 topic_tag 中出现（AND）
+  selectedTags.forEach((t, i) => {
+    const key = `:tg${i}`;
+    clauses.push(`(topic_tag LIKE ${key})`);
+    params[key] = `%${t}%`;
+  });
+
   const where = clauses.length ? ("WHERE " + clauses.join(" AND ")) : "";
-  return { where, params, kw };
+  return { where, params, kw, selectedTags };
 }
 
 function runSearch() {
@@ -206,7 +258,6 @@ function runSearch() {
 
   const offset = (PAGE - 1) * PAGE_SIZE;
 
-  // 取出双语字段，由 render 决定展示模式
   const rows = query(`
     SELECT
       uid,
@@ -235,11 +286,19 @@ function runSearch() {
 function render(items, kw) {
   const el = document.getElementById('list');
   el.innerHTML = items.map(it => {
-    // 元信息：带“字段名”
+    // tag chips
+    const tags = parseTags(it.topic_tag);
+    const tagsHtml = tags.length
+      ? `<div class="tags">` + tags.map(t => `
+          <span class="tag-chip" style="--tag-bg:${hashHsl(t)}">${escapeHtml(t)}</span>
+        `).join('') + `</div>`
+      : '';
+
+    // 元信息：字段名
     const meta = [
       `<span><strong>期刊：</strong>${escapeHtml(it.journal || '')}</span>`,
       it.type ? `<span><strong>类型：</strong>${escapeHtml(it.type)}</span>` : '',
-      it.topic_tag ? `<span><strong>主题：</strong>${escapeHtml(it.topic_tag)}</span>` : '',
+      tags.length ? `<span><strong>tag：</strong>${tags.map(t => escapeHtml(t)).join(' / ')}</span>` : '',
       `<span><strong>日期：</strong>${fmtDate(it.pub_date)}</span>`
     ].filter(Boolean).join(' · ');
 
@@ -247,17 +306,14 @@ function render(items, kw) {
     let absHTML = '';
 
     if (state.bilingual) {
-      // ✅ 英文在前，中文在后
       const ten = it.title_en ? `<div class="t-en">${highlightAndEscape(it.title_en, kw)}</div>` : '';
       const tcn = it.title_cn ? `<div class="t-cn">${highlightAndEscape(it.title_cn, kw)}</div>` : '';
       const aen = it.abstract_en ? `<div class="a-en">${highlightAndEscape(it.abstract_en, kw)}</div>` : '';
       const acn = it.abstract_cn ? `<div class="a-cn">${highlightAndEscape(it.abstract_cn, kw)}</div>` : '';
-
       const hasTitle = ten || tcn;
       titleHTML = `<div class="title">${hasTitle ? (ten + tcn) : '(无标题)'}</div>`;
       absHTML   = `<div class="abs">${aen}${acn}</div>`;
     } else {
-      // 非双语：英文优先显示
       const titlePref = it.title_en || it.title_cn || '(无标题)';
       const absPref   = it.abstract_en || it.abstract_cn || '';
       titleHTML = `<div class="title">${highlightAndEscape(titlePref, kw)}</div>`;
@@ -270,6 +326,7 @@ function render(items, kw) {
     return `
       <div class="card">
         ${titleHTML}
+        ${tagsHtml}
         <div class="meta">${meta}</div>
         ${absHTML}
         <div class="meta">${doi} ${link}</div>

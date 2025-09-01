@@ -1,5 +1,5 @@
 /* ===== 基础 ===== */
-:root { --maxw: 1100px; }
+:root { --maxw: 1100px; --btn-bg:#f8fafc; --btn-bd:#d1d5db; --btn-tx:#111827; --btn-bg-hover:#f3f4f6; }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -12,35 +12,50 @@ body {
 header, main, footer { max-width: var(--maxw); margin: 0 auto; padding: 12px; }
 header h1 { margin: 8px 0 12px; line-height: 1.2; }
 
+/* ===== 统一按钮风格（要求 4）===== */
+button { cursor: pointer; }
+.btn {
+  height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+  line-height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--btn-bd);
+  background: var(--btn-bg);
+  color: var(--btn-tx);
+}
+.btn:hover { background: var(--btn-bg-hover); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-secondary { background: #fff; }
+
 /* ===== 控件区域：两排网格 ===== */
-.controls {                 /* 外层：两行 */
+.controls {
   display: grid;
   gap: 12px;
 }
 
-.controls .row {            /* 每一行也是网格，易于精确排版 */
+.controls .row {
   display: grid;
   gap: 12px;
   align-items: center;
 }
 
-/* 第 1 排：关键词(弹性) + 期刊(定宽范围) */
+/* 第 1 排：关键词(弹性) + 期刊 + tag 多选 */
 .row-top {
-  grid-template-columns: minmax(340px, 1fr) minmax(240px, 360px);
+  grid-template-columns: minmax(340px, 1fr) minmax(220px, 300px) minmax(220px, 1fr);
 }
 
-/* 第 2 排：快捷时间 + 起 + 止 + 双语 + 搜索 + 重置 */
+/* 第 2 排：快捷时间 + “发表日期区间”提示 + 起 + 止 + 双语 + 重置 */
 .row-actions {
-  grid-template-columns: auto minmax(160px, 1fr) minmax(160px, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(160px, 1fr) minmax(160px, 1fr) auto auto;
 }
 
-/* 统一控件的高度、内边距与圆角 */
-.controls button,
+/* 输入控件统一 */
 .controls select,
 .controls input[type="date"],
 .controls input[type="text"],
 .controls input[type="search"],
-#q, #journal, #date_from, #date_to, #bilingual-toggle, #search, #reset {
+#q, #journal, #tag, #date_from, #date_to, #bilingual-toggle, #reset, .range-btn {
   height: 44px;
   padding: 0 14px;
   font-size: 14px;
@@ -50,23 +65,26 @@ header h1 { margin: 8px 0 12px; line-height: 1.2; }
   background: #fff;
 }
 
-/* 输入框与下拉 */
-#q { width: 100%; }
-#journal { width: 100%; }
+/* 多选 tag 下拉更大些方便选择 */
+#tag {
+  width: 100%;
+  min-height: 44px;
+}
 
 /* 快捷时间按钮并排紧凑 */
 .quick-range { display: inline-flex; gap: 8px; flex-wrap: nowrap; }
 .quick-range .range-btn { white-space: nowrap; }
 
-/* 日期输入宽度一致 */
+/* 日期输入与提示 */
+.date-hint {
+  color: #374151;
+  font-size: 14px;
+  white-space: nowrap;
+}
 #date_from, #date_to { width: 100%; }
 
 /* 双语按钮不换行 */
 #bilingual-toggle { white-space: nowrap; }
-
-/* 交互反馈 */
-button { cursor: pointer; }
-button:hover { background: #f3f4f6; }
 
 /* ===== 列表与卡片 ===== */
 #stats { color: #374151; font-size: 13px; margin-top: 8px; }
@@ -89,6 +107,7 @@ button:hover { background: #f3f4f6; }
 .meta  { color: #6b7280; font-size: 12px; margin-bottom: 6px; }
 .abs   { color: #111827; }
 
+/* DOI 徽章 */
 .badge {
   display: inline-block;
   padding: 2px 6px;
@@ -96,6 +115,18 @@ button:hover { background: #f3f4f6; }
   border-radius: 999px;
   font-size: 11px;
   margin-right: 6px;
+}
+
+/* tag 彩色 chips（要求 1）*/
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.tag-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #0b1021;
+  background: var(--tag-bg, #e5e7eb);
+  border: 1px solid rgba(0,0,0,.06);
 }
 
 /* 分页 */
@@ -114,12 +145,12 @@ button:hover { background: #f3f4f6; }
 /* ===== 响应式：窄屏优雅换行 ===== */
 @media (max-width: 980px) {
   .row-top {
-    grid-template-columns: 1fr;            /* 上排：关键词 → 期刊改为竖排 */
+    grid-template-columns: 1fr;  /* 上排堆叠：关键词 → 期刊 → tag */
   }
   .row-actions {
-    grid-template-columns: 1fr 1fr;        /* 下排：两列自动换行 */
+    grid-template-columns: 1fr 1fr; /* 下排两列自动换行 */
   }
-  .quick-range { order: -1; }              /* 快捷按钮排最前 */
+  .quick-range { order: -1; }      /* 快捷按钮排最前 */
 }
 
 @media (max-width: 600px) {
@@ -132,4 +163,11 @@ mark {
   background: #fff3a3;
   padding: 0 .08em;
   border-radius: 2px;
+}
+
+/* 页脚访问量条 */
+.site-stats {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 12px;
 }

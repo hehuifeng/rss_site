@@ -11,30 +11,35 @@
   <header>
     <h1>Paper Tracker</h1>
 
-    <div class="controls-grid">
-      <!-- 第 1 排：关键词 + 期刊 -->
+    <div class="controls">
+      <!-- 第 1 排：关键词 + 期刊 + tag 多选 -->
       <div class="row row-top">
         <input id="q" placeholder="关键词：标题/作者/摘要…" />
         <select id="journal"><option value="">全部期刊/来源</option></select>
+
+        <!-- 新增：tag 多选筛选 -->
+        <select id="tag" multiple title="按 tag 筛选（可多选）">
+          <!-- 选项由 JS 注入 -->
+        </select>
       </div>
 
-      <!-- 第 2 排：快捷时间 + 日期 + 双语 + 搜索/重置 -->
+      <!-- 第 2 排：快捷时间 + 日期 + 双语 + 重置（已去掉“搜索”按钮） -->
       <div class="row row-actions">
         <div class="quick-range" role="group" aria-label="快捷时间筛选">
-          <button class="range-btn" data-range="3d"  id="range-3d">近3天</button>
-          <button class="range-btn" data-range="7d"  id="range-7d">近7天</button>
-          <button class="range-btn" data-range="30d" id="range-30d">近30天</button>
+          <button class="btn range-btn" data-range="3d"  id="range-3d">近3天</button>
+          <button class="btn range-btn" data-range="7d"  id="range-7d">近7天</button>
+          <button class="btn range-btn" data-range="30d" id="range-30d">近30天</button>
         </div>
 
-        <input id="date_from" type="date" />
-        <input id="date_to" type="date" />
+        <span class="date-hint">发表日期区间</span>
+        <input id="date_from" type="date" placeholder="起始日期" aria-label="起始日期" />
+        <input id="date_to" type="date" placeholder="终止日期" aria-label="终止日期" />
 
-        <button id="bilingual-toggle" aria-pressed="false" title="切换标题与摘要的中英双语显示">
+        <button id="bilingual-toggle" class="btn" aria-pressed="false" title="切换标题与摘要的中英双语显示">
           双语显示：关
         </button>
 
-        <button id="search">搜索</button>
-        <button id="reset">重置</button>
+        <button id="reset" class="btn btn-secondary" title="清空所有筛选条件并重置">重置</button>
       </div>
     </div>
   </header>
@@ -43,19 +48,19 @@
     <div id="stats"></div>
     <div id="list"></div>
     <div class="pager">
-      <button id="prev">上一页</button>
+      <button id="prev" class="btn btn-secondary">上一页</button>
       <span id="pageinfo"></span>
-      <button id="next">下一页</button>
+      <button id="next" class="btn btn-secondary">下一页</button>
     </div>
   </main>
 
   <footer>
     <small>本站点自包含（sql-wasm.js / sql-wasm.wasm 本地加载），可直接部署到 GitHub Pages。</small>
+    <div id="site-stats" class="site-stats" aria-live="polite"></div>
   </footer>
 
   <!-- 本地文件：请将 sql-wasm.js 与 sql-wasm.wasm 放在根目录 -->
   <script src="./sql-wasm.js"></script>
   <script src="app.js"></script>
-
 </body>
 </html>

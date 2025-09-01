@@ -78,9 +78,9 @@
       <h1>说明</h1>
     </header>
     <main class="about-main">
-      <p><strong>Paper Tracker</strong> 致力于为研究者提供一个快速浏览最新学术论文的平台。我们的初衷是将不同来源的论文信息集中整理，统一展示，帮助您以最少的时间掌握研究前沿。</p>
+      <p><strong>Paper Tracker</strong> 致力于为研究者提供一个快速浏览最新学术论文的平台。我们的目标是将来自不同来源的论文信息集中整理并统一展示，帮助您以最少的时间掌握研究前沿。</p>
       
-      <p>系统的数据来自公开的 <code>RSS</code> 订阅与 <code>JSON-LD</code> 元数据，后台会定期自动抓取、去重与更新，确保信息始终干净、准确且实时。</p>
+      <p>系统会每天自动检查目标期刊的 <code>RSS</code> 订阅与网页 <code>JSON-LD</code> 元数据，一旦有新论文就会立即抓取并写入数据库。后台内置去重机制，保证不会重复推送，确保信息始终干净、准确且实时更新。</p>
       
       <p>您可以通过关键词、期刊、日期、标签等条件进行检索，并支持分页浏览及中英双语切换。</p>
 
@@ -101,16 +101,17 @@
       <p class="tag-note">系统会根据标题与摘要中的关键词自动生成标签，用于初步分类与筛选。由于采用自动匹配，标签仅供参考，不能替代人工精细标注。</p>
       <ul class="tag-keys">
         <li><strong>生命科学：</strong>
-          <pre class="keywords">crispr; cas9; genome; transcriptome; proteome; metabolome; stem cell; neuron; immunology; vaccine; cancer; oncology; biology; biochemistry; clinical trial; therapy; disease; pharmacology; ...</pre>
+          <pre class="keywords">crispr; cas9; genome; genomic; epigenome; transcriptome; metagenome; proteome; metabolome; cell; cells; cellular; stem cell; pluripotent; embryo; tissue; organ; neuron; neuro; synapse; protein; peptide; enzyme; kinase; antibody; rna; mrna; trna; sirna; mirna; dna; chromosome; immun; immune; immunology; antigen; vaccine; virus; viral; bacteria; bacterial; microbiome; cancer; tumor; oncology; pathway; biology; biological; biomed; biomedical; life science; biochemistry; molecular; physiology; pharmacology; toxicology; zebrafish; mouse model; rat model; clinical trial; patient; disease; therapy; therapeutic</pre>
         </li>
         <li><strong>人工智能：</strong>
-          <pre class="keywords">ai; machine learning; deep learning; neural network; gpt; transformer; llm; reinforcement learning; computer vision; nlp; language model; speech recognition; recommendation system; knowledge graph; multi-agent; ...</pre>
+          <pre class="keywords">ai; artificial intelligence; machine learning; ml; deep learning; dl; neural network; cnn; rnn; gan; gpt; transformer; bert; llm; foundation model; reinforcement learning; rl; q-learning; policy gradient; self-supervised; supervised learning; unsupervised learning; few-shot; zero-shot; transfer learning; representation learning; backpropagation; computer vision; image recognition; object detection; segmentation; natural language processing; nlp; language model; speech recognition; recommendation system; knowledge graph; ai agent; autonomous; multi-agent</pre>
         </li>
-        <li><strong>3D打印与增材制造：</strong>
-          <pre class="keywords">3d print; additive manufacturing; rapid prototyping; stereolithography; selective laser sintering; bioprinting; metal printing; 增材; 三维打印; 生物打印; ...</pre>
+        <li><strong>3D打印和增材制造：</strong>
+          <pre class="keywords">3d print; 3d-print; additive manufacturing; rapid prototyping; fused deposition modeling; fdm; fused filament fabrication; fff; stereolithography; sla; selective laser sintering; sls; powder bed; binder jetting; direct energy deposition; ded; electron beam melting; ebm; inkjet printing; bioprinting; bio-printing; extrusion printing; laser melting; metal printing; metal additive; 增材; 3d打印; 三维打印; 金属打印; 生物打印; 组织打印</pre>
         </li>
       </ul>
     </main>
+
 
   </section>
 

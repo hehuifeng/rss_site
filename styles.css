@@ -256,3 +256,21 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
   font-size: 14px;
   color: #374151;
 }
+
+
+.tag-keys {
+  /* 设置最大宽度，超出则自动换行 */
+  max-width: 100%;
+  padding: 0 15px; /* 可选：添加内边距避免内容贴边 */
+}
+
+.tag-keys li {
+  /* 确保允许自动换行 */
+  white-space: normal;
+  /* 可选：添加内边距和外边距增加可读性 */
+  margin-bottom: 15px;
+  padding: 10px;
+  /* 可选：添加背景色区分不同类别 */
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}

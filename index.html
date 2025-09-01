@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
-  <title>Paper Tracker (Self-contained)</title>
+  <title>Paper Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Static paper tracker using sql.js locally (no CDN)">
   <link rel="stylesheet" href="styles.css" />
@@ -10,6 +10,7 @@
 <body>
   <header>
     <h1>Paper Tracker</h1>
+    <div id="db-updated" class="db-updated" aria-live="polite"></div>
 
     <div class="controls">
       <!-- 第 1 排：关键词 + 期刊 -->
@@ -52,6 +53,7 @@
     <div class="pager">
       <button id="prev" class="btn btn-secondary">上一页</button>
       <span id="pageinfo"></span>
+      <span id="pagecount"></span> <!-- 新增：总页数 -->
       <button id="next" class="btn btn-secondary">下一页</button>
     </div>
   </main>

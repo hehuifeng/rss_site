@@ -162,3 +162,14 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 
 /* 页脚访问量条 */
 .site-stats { margin-top: 8px; color: #6b7280; font-size: 12px; }
+
+/* 数据库最近更新时间条 */
+.db-updated{
+  margin: 4px 0 10px;
+  color: #6b7280;
+  font-size: 12px;
+}
+#pageinfo, #pagecount {
+  font-size: 14px;
+  color: #374151;
+}

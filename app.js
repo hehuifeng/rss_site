@@ -128,7 +128,40 @@ function setDefaultDatesOnce(){
   // 仅当用户尚未手动选择时，给终止日期赋值为今天
   if (dt && !dt.value) dt.value = todayStr();
 }
+// 把 last_updated_at 格式化为本地“YYYY-MM-DD HH:MM”
+function fmtLocalDateTime(input){
+  if (!input) return '';
+  // 兼容三种常见格式：ISO 字符串 / 秒级时间戳 / 毫秒级时间戳
+  let d;
+  if (/^\d{13}$/.test(String(input))) {
+    d = new Date(Number(input));              // ms
+  } else if (/^\d{10}$/.test(String(input))) {
+    d = new Date(Number(input) * 1000);       // s
+  } else {
+    d = new Date(String(input));              // ISO
+  }
+  if (isNaN(d)) return String(input);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const da = String(d.getDate()).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  return `${y}-${m}-${da} ${hh}:${mm}`;
+}
 
+// 查询全库最近更新时间并渲染
+function renderLastUpdated(){
+  try{
+    const row = query(`SELECT COUNT(*) AS n, MAX(last_updated_at) AS ts FROM articles`)[0];
+    const el = document.getElementById('db-updated');
+    if (el && row) {
+      const ts = row.ts ? fmtLocalDateTime(row.ts) : '—';
+      el.textContent = `数据库共 ${row.n} 条 · 最近更新：${fmtLocalDateTime(row.ts)}`;
+    }
+  }catch(e){
+    console.warn('获取最近更新时间失败：', e);
+  }
+}
 // ===== 入口 =====
 async function init() {
   await ensureSqlJs();
@@ -139,8 +172,8 @@ async function init() {
   db = new SQL.Database(new Uint8Array(buf));
 
   await populateFilters();
+  renderLastUpdated();  // ← 新增：显示“最近更新”
   bindEvents();
-  setDefaultDatesOnce();
   window.trackVisits?.();
   runSearch();
 }
@@ -171,10 +204,14 @@ async function populateFilters() {
 
   let tags = Array.from(all);
 
-  // “生命科学”优先置顶（如果存在）
+  // 排序规则：生命科学最前，其他最后，其余按拼音/字母序
   tags.sort((a, b) => {
     if (a === '生命科学') return -1;
     if (b === '生命科学') return 1;
+
+    if (a === '其他') return 1;
+    if (b === '其他') return -1;
+
     return a.localeCompare(b, 'zh-Hans-CN');
   });
 
@@ -351,8 +388,11 @@ function runSearch() {
     LIMIT :limit OFFSET :offset
   `, { ...params, ":limit": PAGE_SIZE, ":offset": offset });
 
-  document.getElementById('stats').textContent = `共 ${total} 条 · 当前第 ${PAGE} 页`;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  document.getElementById('stats').textContent = `共 ${total} 条`;
   document.getElementById('pageinfo').textContent = `第 ${PAGE} 页`;
+  document.getElementById('pagecount').textContent = ` / 共 ${totalPages} 页`;
 
   render(rows, kw);
   document.getElementById('prev').disabled = PAGE <= 1;

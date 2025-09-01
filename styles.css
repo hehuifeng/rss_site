@@ -108,6 +108,34 @@ button { cursor: pointer; }
   color: #0b1021;
 }
 
+/* 类型按钮筛选（样式与 tag 按钮一致） */
+.type-filter-hint { color:#374151; font-size:14px; line-height: 44px; }
+.type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.type-btn {
+  height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+  line-height: 42px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  position: relative;
+}
+.type-btn.is-active {
+  border-color: transparent;
+  background: #e5e7eb;
+  color: #0b1021;
+}
+
+/* 窄屏换行（可复用 row-tags 的模式） */
+@media (max-width: 980px) {
+  .row-types { grid-template-columns: 1fr; }
+}
+
 /* 列表与卡片 */
 #stats { color: #374151; font-size: 13px; margin-top: 8px; }
 #list { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }

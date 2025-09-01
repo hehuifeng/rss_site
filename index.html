@@ -15,7 +15,7 @@
     <div class="controls">
       <!-- 第 1 排：关键词 + 期刊 -->
       <div class="row row-top">
-        <input id="q" placeholder="关键词：标题/摘要…" />
+        <input id="q" placeholder="关键词（可用逗号分隔多个）：标题/摘要/DOI…" />
         <select id="journal"><option value="">全部期刊/来源</option></select>
       </div>
 
@@ -43,6 +43,12 @@
       <div class="row row-tags">
         <span class="tag-filter-hint">按 tag 筛选：</span>
         <div id="tag-buttons" class="tag-buttons" role="group" aria-label="tag 筛选（可多选）"></div>
+      </div>
+      
+      <!-- 第 4 排：类型按钮（紧跟在 tag 按钮下面） -->
+      <div class="row row-types">
+        <span class="type-filter-hint">按类型筛选：</span>
+        <div id="type-buttons" class="type-buttons" role="group" aria-label="类型筛选（可多选）"></div>
       </div>
     </div>
   </header>

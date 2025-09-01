@@ -59,7 +59,8 @@ function highlightAndEscape(text, kw){
   const s = String(text || '');
   const q = String(kw || '').trim();
   if (!q) return escapeHtml(s);
-  const terms = q.split(/\s+/).filter(Boolean);
+  // 逗号或空白都作为分隔
+  const terms = q.split(/[,\s]+/).filter(Boolean);
   if (!terms.length) return escapeHtml(s);
   const pattern = terms.map(escapeRegExp).join('|');
   const re = new RegExp(`(${pattern})`, 'gi');
@@ -68,6 +69,7 @@ function highlightAndEscape(text, kw){
   esc = esc.replace(/\[\[\[H\]\]\]/g, '<mark>').replace(/\[\[\[\/H\]\]\]/g, '</mark>');
   return esc;
 }
+
 function query(sql, params = {}) {
   const stmt = db.prepare(sql);
   stmt.bind(params);
@@ -203,7 +205,32 @@ async function populateFilters() {
   rows.forEach(r => parseTags(r.topic_tag).forEach(t => all.add(t)));
 
   let tags = Array.from(all);
-
+  // types -> 渲染为按钮（可多选）
+  const typeRows = query(`
+    SELECT DISTINCT type AS t FROM articles
+    WHERE t IS NOT NULL AND TRIM(t) <> ''
+    ORDER BY t COLLATE NOCASE
+  `);
+  const typeContainer = document.getElementById('type-buttons');
+  typeContainer.innerHTML = '';
+  typeRows
+    .map(r => r.t)
+    .filter(Boolean)
+    .forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'btn type-btn';
+      btn.type = 'button';
+      btn.textContent = t;
+      btn.setAttribute('data-type', t);
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', () => {
+        const pressed = btn.getAttribute('aria-pressed') !== 'true';
+        btn.setAttribute('aria-pressed', String(pressed));
+        btn.classList.toggle('is-active', pressed);
+        PAGE = 1; runSearch();
+      });
+      typeContainer.appendChild(btn);
+    });
   // 排序规则：生命科学最前，其他最后，其余按拼音/字母序
   tags.sort((a, b) => {
     if (a === '生命科学') return -1;
@@ -263,6 +290,10 @@ function bindEvents() {
     document.querySelectorAll('.tag-btn.is-active').forEach(b=>{
       b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
     });
+    // 清空 type 按钮状态（新增）
+    document.querySelectorAll('.type-btn.is-active').forEach(b=>{
+      b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
+    });
     PAGE = 1; runSearch();
   };
 
@@ -317,51 +348,79 @@ function setQuickRange(range) {
   PAGE = 1; runSearch();
 }
 
-// WHERE 构造
+// WHERE 构造（支持多关键词、tag AND、type OR、journal、日期区间）
 function buildWhere() {
   const getVal = (id) => (document.getElementById(id)?.value ?? '').trim();
 
-  const kw = getVal('q');
+  const kwRaw   = getVal('q');        // 原始关键词串（用于前端高亮）
   const journal = getVal('journal');
-  const df = getVal('date_from');
-  const dt = getVal('date_to');
+  const df      = getVal('date_from');
+  const dt      = getVal('date_to');
 
-  // 从“按下”的 tag 按钮读取选中项
+  // 1) 关键词：用英文逗号分隔，AND 逻辑；每个词在多字段 OR
+  const kwTerms = kwRaw
+    ? kwRaw.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  // 2) 选中的 tag（按钮式），AND 逻辑；兼容 JSON 数组/旧文本
   const selectedTags = Array.from(document.querySelectorAll('.tag-btn.is-active'))
     .map(b => b.getAttribute('data-tag'))
     .filter(Boolean);
 
-  const clauses = [];
-  const params = {};
+  // 3) 选中的类型（按钮式），OR 逻辑
+  const selectedTypes = Array.from(document.querySelectorAll('.type-btn.is-active'))
+    .map(b => b.getAttribute('data-type'))
+    .filter(Boolean);
 
-  if (kw) {
+  const clauses = [];
+  const params  = {};
+
+  // 关键词：AND（每个 term 建一组 OR 子句）
+  kwTerms.forEach((term, i) => {
+    const k = `:kw${i}`;
     clauses.push("(" +
-      "title_en LIKE :kw OR title_cn LIKE :kw OR " +
-      "abstract_en LIKE :kw OR abstract_cn LIKE :kw OR " +
-      "doi LIKE :kw" +
+      "title_en    LIKE " + k + " OR " +
+      "title_cn    LIKE " + k + " OR " +
+      "abstract_en LIKE " + k + " OR " +
+      "abstract_cn LIKE " + k + " OR " +
+      "doi         LIKE " + k +
     ")");
-    params[":kw"] = `%${kw}%`;
-  }
+    params[k] = `%${term}%`;
+  });
+
+  // 期刊
   if (journal) {
     clauses.push("journal = :journal");
     params[":journal"] = journal;
   }
+
+  // 日期
   if (df) { clauses.push("(pub_date >= :df)"); params[":df"] = df; }
   if (dt) { clauses.push("(pub_date <= :dt)"); params[":dt"] = dt; }
 
-  // tag 过滤（AND 逻辑）：兼容 JSON 数组字符串 与 旧的纯文本
+  // tag：AND；每个 tag 既匹配 JSON 数组中的 "tag" 也兼容旧的包含匹配
   selectedTags.forEach((t, i) => {
     const kj = `:tgjson${i}`;
     const kp = `:tgplain${i}`;
-    // JSON 形式用带双引号的匹配，避免把 "生命" 误配到 "生命科学"
     clauses.push(`(topic_tag LIKE ${kj} OR topic_tag LIKE ${kp})`);
-    params[kj] = `%"${t}"%`;
-    params[kp] = `%${t}%`;
+    params[kj] = `%"${t}"%`;  // 精准命中 JSON 数组项
+    params[kp] = `%${t}%`;    // 兼容旧纯文本
   });
 
+  // 类型：OR；选 1 个等价于 "="，选多个用 IN (...)
+  if (selectedTypes.length === 1) {
+    clauses.push("(type = :ty0)");
+    params[":ty0"] = selectedTypes[0];
+  } else if (selectedTypes.length > 1) {
+    const ph = selectedTypes.map((_, i) => `:ty${i}`);
+    clauses.push(`(type IN (${ph.join(', ')}))`);
+    selectedTypes.forEach((t, i) => { params[`:ty${i}`] = t; });
+  }
+
   const where = clauses.length ? ("WHERE " + clauses.join(" AND ")) : "";
-  return { where, params, kw };
+  return { where, params, kw: kwRaw };
 }
+
 
 function runSearch() {
   const { where, params, kw } = buildWhere();

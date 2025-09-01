@@ -33,6 +33,7 @@
           <input id="date_from" class="date-input" type="date" placeholder="起始日期" aria-label="起始日期" />
           <input id="date_to"   class="date-input" type="date" placeholder="终止日期" aria-label="终止日期" />
 
+
           <div class="quick-range" role="group" aria-label="快捷时间筛选">
             <button class="btn range-btn" data-range="3d"  id="range-3d">近3天</button>
             <button class="btn range-btn" data-range="7d"  id="range-7d">近7天</button>
@@ -94,11 +95,18 @@
 
       <p>翻译使用 <code>qwen-flash</code> 模型（<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>）。</p>
 
-      <h2>标签关键词</h2>
+      <h2>标签匹配关键词</h2>
+      <p class="tag-note">下列类型标签通过在标题和摘要中匹配关键词自动生成，因此可能不完全准确，仅供参考。</p>
       <ul class="tag-keys">
-        <li><strong>生命科学：</strong>crispr|cas9|genome|genomic|epigenome|transcriptome|metagenome|proteome|metabolome|cell|cells|cellular|stem\s*cell|pluripotent|embryo|tissue|organ|neuron|neuro|synapse|protein|peptide|enzyme|kinase|antibody|rna|mrna|trna|sirna|mirna|dna|chromosome|immun|immune|immunology|antigen|vaccine|virus|viral|bacteria|bacterial|microbiome|cancer|tumor|oncology|pathway|biology|biological|biomed|biomedical|life\s*science|biochemistry|molecular|physiology|pharmacology|toxicology|zebrafish|mouse model|rat model|clinical trial|patient|disease|therapy|therapeutic</li>
-        <li><strong>人工智能：</strong>ai|artificial\s*intelligence|machine\s*learning|ml|deep\s*learning|dl|neural\s*network|cnn|rnn|gan|gpt|transformer|bert|llm|foundation\s*model|reinforcement\s*learning|rl|q-learning|policy\s*gradient|self\-supervised|supervised\s*learning|unsupervised\s*learning|few\-shot|zero\-shot|transfer\s*learning|representation\s*learning|backpropagation|computer\s*vision|image\s*recognition|object\s*detection|segmentation|natural\s*language\s*processing|nlp|language\s*model|speech\s*recognition|recommendation\s*system|knowledge\s*graph|ai\s*agent|autonomous|multi\-agent</li>
-        <li><strong>3D打印和增材制造：</strong>3d\s*print|3d\-print|additive\s*manufactur|rapid\s*prototyping|fused\s*deposition\s*modeling|fdm|fused\s*filament\s*fabrication|fff|stereolithography|sla|selective\s*laser\s*sintering|sls|powder\s*bed|binder\s*jetting|direct\s*energy\s*deposition|ded|electron\s*beam\s*melting|ebm|inkjet\s*printing|bioprinting|bio\-printing|extrusion\s*printing|laser\s*melting|metal\s*printing|metal\s*additive</li>
+        <li><strong>生命科学：</strong>
+          <pre class="keywords">crispr; cas9; genome; genomic; epigenome; transcriptome; metagenome; proteome; metabolome; cell; cells; cellular; stem cell; pluripotent; embryo; tissue; organ; neuron; neuro; synapse; protein; peptide; enzyme; kinase; antibody; rna; mrna; trna; sirna; mirna; dna; chromosome; immun; immune; immunology; antigen; vaccine; virus; viral; bacteria; bacterial; microbiome; cancer; tumor; oncology; pathway; biology; biological; biomed; biomedical; life science; biochemistry; molecular; physiology; pharmacology; toxicology; zebrafish; mouse model; rat model; clinical trial; patient; disease; therapy; therapeutic</pre>
+        </li>
+        <li><strong>人工智能：</strong>
+          <pre class="keywords">ai; artificial intelligence; machine learning; ml; deep learning; dl; neural network; cnn; rnn; gan; gpt; transformer; bert; llm; foundation model; reinforcement learning; rl; q-learning; policy gradient; self-supervised; supervised learning; unsupervised learning; few-shot; zero-shot; transfer learning; representation learning; backpropagation; computer vision; image recognition; object detection; segmentation; natural language processing; nlp; language model; speech recognition; recommendation system; knowledge graph; ai agent; autonomous; multi-agent</pre>
+        </li>
+        <li><strong>3D打印和增材制造：</strong>
+          <pre class="keywords">3d print; 3d-print; additive manufacturing; rapid prototyping; fused deposition modeling; fdm; fused filament fabrication; fff; stereolithography; sla; selective laser sintering; sls; powder bed; binder jetting; direct energy deposition; ded; electron beam melting; ebm; inkjet printing; bioprinting; bio-printing; extrusion printing; laser melting; metal printing; metal additive; 增材; 3d打印; 三维打印; 金属打印; 生物打印; 组织打印</pre>
+        </li>
       </ul>
 
     </main>

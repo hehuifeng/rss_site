@@ -78,9 +78,11 @@
       <h1>说明</h1>
     </header>
     <main class="about-main">
-      <p>Paper Tracker 致力于帮助研究者快速浏览近期学术论文，初衷是集中展示不同来源的论文摘要，方便按关键词和时间筛选。</p>
-      <p>数据来自公开的 RSS 订阅与 JSON-LD 元数据，后台定期抓取并整理。</p>
-      <p>您可以通过关键词、期刊、日期、标签等条件检索，并支持分页浏览及中英双语切换。</p>
+      <p><strong>Paper Tracker</strong> 致力于为研究者提供一个快速浏览最新学术论文的平台。我们的初衷是将不同来源的论文信息集中整理，统一展示，帮助您以最少的时间掌握研究前沿。</p>
+      
+      <p>系统的数据来自公开的 <code>RSS</code> 订阅与 <code>JSON-LD</code> 元数据，后台会定期自动抓取、去重与更新，确保信息始终干净、准确且实时。</p>
+      
+      <p>您可以通过关键词、期刊、日期、标签等条件进行检索，并支持分页浏览及中英双语切换。</p>
 
       <h2>数据来源</h2>
       <ul class="feed-list">
@@ -93,23 +95,23 @@
         <li><code>https://www.nature.com/natcomputsci.rss</code></li>
       </ul>
 
-      <p>翻译使用 <code>qwen-flash</code> 模型（<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>）。</p>
+      <p>翻译由 <code>qwen-flash</code> 模型完成（<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>），在保持学术语境的同时实现快速、低成本的中英双语转换。</p>
 
-      <h2>标签匹配关键词</h2>
-      <p class="tag-note">下列类型标签通过在标题和摘要中匹配关键词自动生成，因此可能不完全准确，仅供参考。</p>
+      <h2>标签与关键词</h2>
+      <p class="tag-note">系统会根据标题与摘要中的关键词自动生成标签，用于初步分类与筛选。由于采用自动匹配，标签仅供参考，不能替代人工精细标注。</p>
       <ul class="tag-keys">
         <li><strong>生命科学：</strong>
-          <pre class="keywords">crispr; cas9; genome; genomic; epigenome; transcriptome; metagenome; proteome; metabolome; cell; cells; cellular; stem cell; pluripotent; embryo; tissue; organ; neuron; neuro; synapse; protein; peptide; enzyme; kinase; antibody; rna; mrna; trna; sirna; mirna; dna; chromosome; immun; immune; immunology; antigen; vaccine; virus; viral; bacteria; bacterial; microbiome; cancer; tumor; oncology; pathway; biology; biological; biomed; biomedical; life science; biochemistry; molecular; physiology; pharmacology; toxicology; zebrafish; mouse model; rat model; clinical trial; patient; disease; therapy; therapeutic</pre>
+          <pre class="keywords">crispr; cas9; genome; transcriptome; proteome; metabolome; stem cell; neuron; immunology; vaccine; cancer; oncology; biology; biochemistry; clinical trial; therapy; disease; pharmacology; ...</pre>
         </li>
         <li><strong>人工智能：</strong>
-          <pre class="keywords">ai; artificial intelligence; machine learning; ml; deep learning; dl; neural network; cnn; rnn; gan; gpt; transformer; bert; llm; foundation model; reinforcement learning; rl; q-learning; policy gradient; self-supervised; supervised learning; unsupervised learning; few-shot; zero-shot; transfer learning; representation learning; backpropagation; computer vision; image recognition; object detection; segmentation; natural language processing; nlp; language model; speech recognition; recommendation system; knowledge graph; ai agent; autonomous; multi-agent</pre>
+          <pre class="keywords">ai; machine learning; deep learning; neural network; gpt; transformer; llm; reinforcement learning; computer vision; nlp; language model; speech recognition; recommendation system; knowledge graph; multi-agent; ...</pre>
         </li>
-        <li><strong>3D打印和增材制造：</strong>
-          <pre class="keywords">3d print; 3d-print; additive manufacturing; rapid prototyping; fused deposition modeling; fdm; fused filament fabrication; fff; stereolithography; sla; selective laser sintering; sls; powder bed; binder jetting; direct energy deposition; ded; electron beam melting; ebm; inkjet printing; bioprinting; bio-printing; extrusion printing; laser melting; metal printing; metal additive; 增材; 3d打印; 三维打印; 金属打印; 生物打印; 组织打印</pre>
+        <li><strong>3D打印与增材制造：</strong>
+          <pre class="keywords">3d print; additive manufacturing; rapid prototyping; stereolithography; selective laser sintering; bioprinting; metal printing; 增材; 三维打印; 生物打印; ...</pre>
         </li>
       </ul>
-
     </main>
+
   </section>
 
   <footer>

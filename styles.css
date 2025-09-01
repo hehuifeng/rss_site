@@ -35,10 +35,21 @@ button { cursor: pointer; }
 /* 第 1 排：关键词 + 期刊 */
 .row-top { grid-template-columns: minmax(340px, 1fr) minmax(220px, 320px); }
 
-/* 第 2 排：快捷时间 + “发表日期区间”提示 + 起 + 止 + 双语 + 重置 */
+/* 第 2 排：提示 + 起始 + 终止 + 快捷时间 + 双语 + 重置
+   两个日期输入用 1fr 1fr 等分，保证视觉等宽 */
 .row-actions {
-  grid-template-columns: auto auto minmax(160px, 1fr) minmax(160px, 1fr) auto auto;
+  grid-template-columns: auto 1fr 1fr auto auto auto;
 }
+
+.date-input,
+#date_from, #date_to {
+  width: 100%;
+  min-width: 0;           /* 防止 placeholder 影响布局 */
+  /* 可选：等宽数字，让日期更整齐 */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
 
 /* 第 3 排：tag 按钮单独成行 */
 .row-tags {

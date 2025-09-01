@@ -95,6 +95,18 @@ function parseTags(raw) {
     )
   );
 }
+function todayStr(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${da}`;
+}
+function setDefaultDatesOnce(){
+  const dt = document.getElementById('date_to');
+  // 仅当用户尚未手动选择时，给终止日期赋值为今天
+  if (dt && !dt.value) dt.value = todayStr();
+}
 
 // ===== 入口 =====
 async function init() {
@@ -107,6 +119,7 @@ async function init() {
 
   await populateFilters();
   bindEvents();
+  setDefaultDatesOnce();
   window.trackVisits?.();
   runSearch();
 }
@@ -187,7 +200,7 @@ function bindEvents() {
     if (q) q.value = '';
     if (j) j.value = '';
     if (df) df.value = '';
-    if (dt) dt.value = '';
+    if (dt) dt.value = todayStr();   // 终止日期重置为今天
     // 清空 tag 按钮状态
     document.querySelectorAll('.tag-btn.is-active').forEach(b=>{
       b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');

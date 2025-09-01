@@ -32,6 +32,7 @@
           <input id="date_from" class="date-input" type="date" placeholder="起始日期" aria-label="起始日期" />
           <input id="date_to"   class="date-input" type="date" placeholder="终止日期" aria-label="终止日期" />
 
+
           <div class="quick-range" role="group" aria-label="快捷时间筛选">
             <button class="btn range-btn" data-range="3d"  id="range-3d">近3天</button>
             <button class="btn range-btn" data-range="7d"  id="range-7d">近7天</button>
@@ -76,11 +77,19 @@
       <h1>说明</h1>
     </header>
     <main class="about-main">
-      <p>Paper Tracker 致力于帮助研究者快速浏览近期学术论文，初衷是集中展示不同来源的论文摘要，方便按关键词和时间筛选。</p>
-      <p>数据来自公开的 RSS 订阅与 JSON-LD 元数据，后台定期抓取并整理。</p>
-      <p>您可以通过关键词、期刊、日期、标签等条件检索，并支持分页浏览及中英双语切换。</p>
 
-      <h2>数据来源</h2>
+      <p><strong>Paper Tracker</strong> 致力于为研究者提供一个快速浏览最新学术论文的平台。</p>
+
+      <p>我们的目标是将来自不同来源的论文信息集中整理并统一展示，帮助您以最少的时间掌握研究前沿。</p>
+      
+      <p>系统会每天自动检查目标期刊的 <code>RSS</code> 订阅与网页 <code>JSON-LD</code> 元数据，一旦有新论文就会立即抓取并写入数据库。</p>
+
+      <p>后台内置去重机制，保证不会重复推送，确保信息始终干净、准确且实时更新。</p>
+      
+      <p>您可以通过关键词、期刊、日期、标签等条件进行检索，并支持分页浏览及中英双语切换。</p>
+
+      <h2>每天检查的RSS列表</h2>
+
       <ul class="feed-list">
         <li><code>https://www.nature.com/ncomms.rss</code></li>
         <li><code>https://www.nature.com/nbt.rss</code></li>
@@ -91,10 +100,11 @@
         <li><code>https://www.nature.com/natcomputsci.rss</code></li>
       </ul>
 
-      <p>翻译使用 <code>qwen-flash</code> 模型（<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>）。</p>
+      <p>翻译由 <code>qwen-flash</code> 模型完成（<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>），在保持学术语境的同时实现快速、低成本的中英双语转换。</p>
 
-      <h2>标签匹配关键词</h2>
-      <p class="tag-note">下列类型标签通过在标题和摘要中匹配关键词自动生成，因此可能不完全准确，仅供参考。</p>
+      <h2>标签与关键词</h2>
+      <p class="tag-note">系统会根据标题与摘要中的关键词自动生成标签，用于初步分类与筛选。由于采用自动匹配，标签仅供参考，不能替代人工精细标注。</p>
+
       <ul class="tag-keys">
         <li><strong>生命科学：</strong>
           <pre class="keywords">crispr; cas9; genome; genomic; epigenome; transcriptome; metagenome; proteome; metabolome; cell; cells; cellular; stem cell; pluripotent; embryo; tissue; organ; neuron; neuro; synapse; protein; peptide; enzyme; kinase; antibody; rna; mrna; trna; sirna; mirna; dna; chromosome; immun; immune; immunology; antigen; vaccine; virus; viral; bacteria; bacterial; microbiome; cancer; tumor; oncology; pathway; biology; biological; biomed; biomedical; life science; biochemistry; molecular; physiology; pharmacology; toxicology; zebrafish; mouse model; rat model; clinical trial; patient; disease; therapy; therapeutic</pre>
@@ -107,6 +117,7 @@
         </li>
       </ul>
     </main>
+
   </section>
 
   <footer>

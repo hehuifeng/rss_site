@@ -45,6 +45,7 @@ body {
   padding: 24px 12px;
   line-height: 1.6;
   color: #374151;
+
 }
 .about-main p { margin-bottom: 1em; }
 .about-main h2 {
@@ -70,6 +71,7 @@ body {
   margin-top: 4px;
 }
 .about-main ul.tag-keys > li { margin-bottom: 12px; }
+
 header, main, footer { max-width: var(--maxw); margin: 0 auto; padding: 12px; }
 header h1 { margin: 8px 0 12px; line-height: 1.2; }
 
@@ -268,3 +270,4 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
   font-size: 14px;
   color: #374151;
 }
+

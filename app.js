@@ -5,7 +5,9 @@
 let db, SQL;
 let PAGE = 1, PAGE_SIZE = 30;
 
-const state = { bilingual: false };
+const state = {
+  bilingual: false,
+};
 
 // ===== 自包含 sql.js 加载 =====
 function locateFile(file) { return './' + file; }
@@ -23,7 +25,7 @@ async function ensureSqlJs() {
   }
 }
 
-// ====== 访问量统计（提前声明并挂到 window，避免未定义）======
+// ===== 访问量（挂全局，避免未定义）=====
 function trackVisits() {
   try {
     const LS = window.localStorage;
@@ -31,11 +33,9 @@ function trackVisits() {
     const UV_ID = 'uv_id';
     const UV_TOTAL = 'uv_total';
 
-    // PV：每次打开 +1
     const pv = Number(LS.getItem(PV_KEY) || '0') + 1;
     LS.setItem(PV_KEY, String(pv));
 
-    // UV：此浏览器首次访问 +1
     if (!LS.getItem(UV_ID)) {
       LS.setItem(UV_ID, `${Date.now()}_${Math.random().toString(36).slice(2)}`);
       const uv = Number(LS.getItem(UV_TOTAL) || '0') + 1;
@@ -43,51 +43,57 @@ function trackVisits() {
     }
     const uv = Number(LS.getItem(UV_TOTAL) || '1');
 
-    const VISIT_ENDPOINT = ''; // 若有后端可填入地址以 sendBeacon 上报
-    if (VISIT_ENDPOINT) {
-      const payload = {
-        ts: Date.now(),
-        ref: document.referrer || '',
-        ua: navigator.userAgent,
-        lang: navigator.language,
-      };
-      navigator.sendBeacon?.(VISIT_ENDPOINT, new Blob([JSON.stringify(payload)], {type: 'application/json'}));
-    }
-
     const bar = document.getElementById('site-stats');
     if (bar) bar.textContent = `本站访问量（本机统计）：浏览 ${pv} · 访客 ${uv}`;
   } catch (e) {
     console.warn('访问量统计失败：', e);
   }
 }
-window.trackVisits = trackVisits; // 显式挂到全局，防止合并/作用域包裹导致拿不到
+window.trackVisits = trackVisits;
 
 // ===== 工具函数 =====
-function fmtDate(s){ if(!s) return ''; const m=/^(\d{4}-\d{2}-\d{2})/.exec(s); return m?m[1]:s; }
-function escapeHtml(str){ return (str||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[m])) }
-function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+function fmtDate(s){ if(!s) return ''; const m = /^(\d{4}-\d{2}-\d{2})/.exec(s); return m? m[1] : s; }
+function escapeHtml(str){ return (str||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) }
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function highlightAndEscape(text, kw){
-  const s=String(text||''); const q=String(kw||'').trim(); if(!q) return escapeHtml(s);
-  const terms=q.split(/\s+/).filter(Boolean); if(!terms.length) return escapeHtml(s);
-  const pattern=terms.map(escapeRegExp).join('|'); const re=new RegExp(`(${pattern})`,'gi');
-  const marked=s.replace(re,'[[[H]]]'+'$1'+'[[[/H]]]'); let esc=escapeHtml(marked);
-  return esc.replace(/\[\[\[H\]\]\]/g,'<mark>').replace(/\[\[\[\/H\]\]\]/g,'</mark>');
+  const s = String(text || '');
+  const q = String(kw || '').trim();
+  if (!q) return escapeHtml(s);
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (!terms.length) return escapeHtml(s);
+  const pattern = terms.map(escapeRegExp).join('|');
+  const re = new RegExp(`(${pattern})`, 'gi');
+  const marked = s.replace(re, '[[[H]]]' + '$1' + '[[[/H]]]');
+  let esc = escapeHtml(marked);
+  esc = esc.replace(/\[\[\[H\]\]\]/g, '<mark>').replace(/\[\[\[\/H\]\]\]/g, '</mark>');
+  return esc;
 }
-function query(sql, params={}) {
-  const stmt=db.prepare(sql); stmt.bind(params); const rows=[];
-  while (stmt.step()) rows.push(stmt.getAsObject()); stmt.free(); return rows;
+function query(sql, params = {}) {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) rows.push(stmt.getAsObject());
+  stmt.free();
+  return rows;
 }
-
-// 稳定标签颜色
-function hashHsl(tag){
-  let h=0; for (let i=0;i<tag.length;i++) h=(h*31+tag.charCodeAt(i))>>>0;
-  const hue=h%360, sat=55+(h%20), light=46+(h%10);
+function hashHsl(tag) {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  const sat = 55 + (h % 20);
+  const light = 46 + (h % 10);
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
-// 解析 topic_tag 为数组（支持多种分隔符）
-function parseTags(raw){
-  if(!raw) return [];
-  return Array.from(new Set(String(raw).split(/[,;｜|，；/]+|\s+/g).map(t=>t.trim()).filter(Boolean)));
+function parseTags(raw) {
+  if (!raw) return [];
+  return Array.from(
+    new Set(
+      String(raw)
+        .split(/[,;｜|，；/]+|\s+/g)
+        .map(t => t.trim())
+        .filter(Boolean)
+    )
+  );
 }
 
 // ===== 入口 =====
@@ -101,7 +107,7 @@ async function init() {
 
   await populateFilters();
   bindEvents();
-  window.trackVisits?.();  // 这里再次通过全局引用，避免作用域问题
+  window.trackVisits?.();
   runSearch();
 }
 
@@ -121,26 +127,44 @@ async function populateFilters() {
     selJ.appendChild(opt);
   });
 
-  // tags
-  const rows = query(`SELECT topic_tag FROM articles
-                      WHERE topic_tag IS NOT NULL AND TRIM(topic_tag) <> ''`);
+  // tags -> 渲染为按钮
+  const rows = query(`
+    SELECT topic_tag FROM articles
+    WHERE topic_tag IS NOT NULL AND TRIM(topic_tag) <> ''
+  `);
   const all = new Set();
   rows.forEach(r => parseTags(r.topic_tag).forEach(t => all.add(t)));
-  const tags = Array.from(all).sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
 
-  const selT = document.getElementById('tag');
-  const ph = document.createElement('option');
-  ph.textContent = '（按住 Ctrl/⌘ 可多选；不选=全部）';
-  ph.disabled = true;
-  selT.appendChild(ph);
+  let tags = Array.from(all);
+
+  // “生命科学”优先置顶（如果存在）
+  tags.sort((a, b) => {
+    if (a === '生命科学') return -1;
+    if (b === '生命科学') return 1;
+    return a.localeCompare(b, 'zh-Hans-CN');
+  });
+
+  const container = document.getElementById('tag-buttons');
+  container.innerHTML = '';
   tags.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t; opt.textContent = t;
-    selT.appendChild(opt);
+    const btn = document.createElement('button');
+    btn.className = 'btn tag-btn';
+    btn.type = 'button';
+    btn.textContent = t;
+    btn.style.setProperty('--tag-bg', hashHsl(t));
+    btn.setAttribute('data-tag', t);
+    btn.setAttribute('aria-pressed', 'false');
+    btn.addEventListener('click', () => {
+      const pressed = btn.getAttribute('aria-pressed') !== 'true';
+      btn.setAttribute('aria-pressed', String(pressed));
+      btn.classList.toggle('is-active', pressed);
+      PAGE = 1; runSearch();
+    });
+    container.appendChild(btn);
   });
 }
 
-// ===== 事件绑定（即时触发 & 无搜索按钮）=====
+// ===== 事件绑定（即时触发）=====
 function bindEvents() {
   const $ = (id) => document.getElementById(id);
 
@@ -149,14 +173,13 @@ function bindEvents() {
   if (q) {
     const debounced = debounce(() => { PAGE = 1; runSearch(); }, 200);
     q.addEventListener('input', debounced);
-    q.addEventListener('keydown', e => { if(e.key==='Enter') e.preventDefault(); });
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
   }
 
-  // 期刊/日期/tag 改变即筛选
+  // 期刊/日期 改变即筛选
   const j = $('journal'); if (j) j.addEventListener('change', () => { PAGE = 1; runSearch(); });
   const df = $('date_from'); if (df) df.addEventListener('change', () => { PAGE = 1; runSearch(); });
   const dt = $('date_to');   if (dt) dt.addEventListener('change', () => { PAGE = 1; runSearch(); });
-  const tg = $('tag');       if (tg) tg.addEventListener('change', () => { PAGE = 1; runSearch(); });
 
   // 重置
   const reset = $('reset');
@@ -165,7 +188,10 @@ function bindEvents() {
     if (j) j.value = '';
     if (df) df.value = '';
     if (dt) dt.value = '';
-    if (tg) Array.from(tg.options).forEach(o => o.selected = false);
+    // 清空 tag 按钮状态
+    document.querySelectorAll('.tag-btn.is-active').forEach(b=>{
+      b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
+    });
     PAGE = 1; runSearch();
   };
 
@@ -193,7 +219,7 @@ function bindEvents() {
 
 // 简易防抖
 function debounce(fn, wait=200){
-  let t; return (...args) => { clearTimeout(t); t=setTimeout(()=>fn.apply(null,args), wait); };
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(()=>fn.apply(null,args), wait); };
 }
 
 // 快捷时间
@@ -220,7 +246,7 @@ function setQuickRange(range) {
   PAGE = 1; runSearch();
 }
 
-// 读取筛选条件并构造 WHERE
+// WHERE 构造
 function buildWhere() {
   const getVal = (id) => (document.getElementById(id)?.value ?? '').trim();
 
@@ -229,9 +255,10 @@ function buildWhere() {
   const df = getVal('date_from');
   const dt = getVal('date_to');
 
-  // 多选 tag
-  const tagSel = document.getElementById('tag');
-  const selectedTags = tagSel ? Array.from(tagSel.selectedOptions).map(o => o.value).filter(Boolean) : [];
+  // 从“按下”的 tag 按钮读取选中项
+  const selectedTags = Array.from(document.querySelectorAll('.tag-btn.is-active'))
+    .map(b => b.getAttribute('data-tag'))
+    .filter(Boolean);
 
   const clauses = [];
   const params = {};
@@ -251,7 +278,7 @@ function buildWhere() {
   if (df) { clauses.push("(pub_date >= :df)"); params[":df"] = df; }
   if (dt) { clauses.push("(pub_date <= :dt)"); params[":dt"] = dt; }
 
-  // tag 过滤（AND 逻辑）
+  // tag 过滤（AND 逻辑：每个被选中的 tag 都需要匹配）
   selectedTags.forEach((t, i) => {
     const key = `:tg${i}`;
     clauses.push(`(topic_tag LIKE ${key})`);

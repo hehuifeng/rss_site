@@ -45,6 +45,17 @@ body {
   padding: 24px 12px;
   line-height: 1.6;
   color: #374151;
+
+}
+.about-main p { margin-bottom: 1em; }
+.about-main h2 {
+  font-size: 16px;
+  margin: 24px 0 8px;
+}
+.about-main ul {
+  margin: 0 0 1em 1.2em;
+  padding-left: 1.2em;
+
 }
 .about-main p { margin-bottom: 1em; }
 header, main, footer { max-width: var(--maxw); margin: 0 auto; padding: 12px; }

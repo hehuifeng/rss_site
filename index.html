@@ -25,6 +25,7 @@
           <select id="journal"><option value="">全部期刊/来源</option></select>
         </div>
 
+
         <!-- 第 2 排：快捷时间 + 日期 + 双语 + 重置 -->
         <div class="row row-actions">
           <span class="date-hint">发表日期区间</span>
@@ -79,6 +80,27 @@
       <p>Paper Tracker 致力于帮助研究者快速浏览近期学术论文，初衷是集中展示不同来源的论文摘要，方便按关键词和时间筛选。</p>
       <p>数据来自公开的 RSS 订阅与 JSON-LD 元数据，后台定期抓取并整理。</p>
       <p>您可以通过关键词、期刊、日期、标签等条件检索，并支持分页浏览及中英双语切换。</p>
+
+      <h2>数据来源</h2>
+      <ul class="feed-list">
+        <li><code>https://www.nature.com/ncomms.rss</code></li>
+        <li><code>https://www.nature.com/nbt.rss</code></li>
+        <li><code>https://www.nature.com/nmeth.rss</code></li>
+        <li><code>https://www.nature.com/nature.rss</code></li>
+        <li><code>https://www.nature.com/natcancer.rss</code></li>
+        <li><code>https://www.nature.com/natmachintell.rss</code></li>
+        <li><code>https://www.nature.com/natcomputsci.rss</code></li>
+      </ul>
+
+      <p>翻译使用 <code>qwen-flash</code> 模型（<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>）。</p>
+
+      <h2>标签关键词</h2>
+      <ul class="tag-keys">
+        <li><strong>生命科学：</strong>CRISPR、genome、stem cell、immunology 等</li>
+        <li><strong>人工智能：</strong>AI、machine learning、deep learning、neural network 等</li>
+        <li><strong>3D打印和增材制造：</strong>3D print、additive manufacturing、bioprinting 等</li>
+      </ul>
+
     </main>
   </section>
 

@@ -7,8 +7,46 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
                "PingFang SC","Hiragino Sans GB","Microsoft YaHei", sans-serif;
   color: #111827;
-  background: #fff;
+  background: #f9fafb;
 }
+/* 顶部导航 */
+.top-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+.tab {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: #374151;
+}
+.tab:hover {
+  border-color: #93c5fd;
+}
+.tab.active {
+  border-color: #3b82f6;
+  color: #111827;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.about-main {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 24px 12px;
+  line-height: 1.6;
+  color: #374151;
+}
+.about-main p { margin-bottom: 1em; }
 header, main, footer { max-width: var(--maxw); margin: 0 auto; padding: 12px; }
 header h1 { margin: 8px 0 12px; line-height: 1.2; }
 
@@ -138,8 +176,9 @@ button { cursor: pointer; }
 
 /* 列表与卡片 */
 #stats { color: #374151; font-size: 13px; margin-top: 8px; }
-#list { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
-.card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fff; }
+#list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 12px; }
+.card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fff; transition: border-color .2s, box-shadow .2s; }
+.card:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
 .title { font-weight: 600; margin-bottom: 6px; }
 .meta  { color: #6b7280; font-size: 12px; margin-bottom: 6px; }
 .abs   { color: #111827; }

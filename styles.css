@@ -12,7 +12,7 @@ body {
 /* 顶部导航 */
 .top-nav {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 16px;
   padding: 12px;
   background: #fff;
@@ -176,7 +176,12 @@ button { cursor: pointer; }
 
 /* 列表与卡片 */
 #stats { color: #374151; font-size: 13px; margin-top: 8px; }
-#list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 12px; }
+#list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
 .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fff; transition: border-color .2s, box-shadow .2s; }
 .card:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
 .title { font-weight: 600; margin-bottom: 6px; }

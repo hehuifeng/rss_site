@@ -21,18 +21,14 @@
       <!-- 第 2 排：快捷时间 + 日期 + 双语 + 重置 -->
       <div class="row row-actions">
         <span class="date-hint">发表日期区间</span>
+
+        <input id="date_from" type="date" placeholder="起始日期" aria-label="起始日期" />
+        <input id="date_to" type="date" placeholder="终止日期" aria-label="终止日期" />
         <div class="quick-range" role="group" aria-label="快捷时间筛选">
           <button class="btn range-btn" data-range="3d"  id="range-3d">近3天</button>
           <button class="btn range-btn" data-range="7d"  id="range-7d">近7天</button>
           <button class="btn range-btn" data-range="30d" id="range-30d">近30天</button>
         </div>
-
-        
-        <input id="date_from" type="date" placeholder="起始日期" aria-label="起始日期" />
-        <span class="date-hint">起</span>
-        <input id="date_to" type="date" placeholder="终止日期" aria-label="终止日期" />
-        <span class="date-hint">止</span>
-
         <button id="bilingual-toggle" class="btn" aria-pressed="false" title="切换标题与摘要的中英双语显示">
           双语显示：关
         </button>

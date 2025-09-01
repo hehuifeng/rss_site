@@ -84,13 +84,34 @@ function hashHsl(tag) {
   const light = 46 + (h % 10);
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
+// 解析 topic_tag 为 tag 数组：优先 JSON.parse，失败再按老的分隔符切分
 function parseTags(raw) {
   if (!raw) return [];
+  const s = String(raw).trim();
+
+  // 优先尝试 JSON 数组（如 '["生命科学","人工智能"]'）
+  if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('"') && s.endsWith('"'))) {
+    try {
+      const parsed = JSON.parse(s);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      return Array.from(
+        new Set(
+          arr
+            .map(x => String(x).trim())
+            .filter(Boolean)
+        )
+      );
+    } catch (e) {
+      // 不是合法 JSON，退回到普通切分
+    }
+  }
+
+  // 兼容旧格式：逗号/分号/竖线/空白等
   return Array.from(
     new Set(
-      String(raw)
+      s
         .split(/[,;｜|，；/]+|\s+/g)
-        .map(t => t.trim())
+        .map(t => t.replace(/^"+|"+$/g, '').trim()) // 去掉意外的包裹引号
         .filter(Boolean)
     )
   );
@@ -291,11 +312,14 @@ function buildWhere() {
   if (df) { clauses.push("(pub_date >= :df)"); params[":df"] = df; }
   if (dt) { clauses.push("(pub_date <= :dt)"); params[":dt"] = dt; }
 
-  // tag 过滤（AND 逻辑：每个被选中的 tag 都需要匹配）
+  // tag 过滤（AND 逻辑）：兼容 JSON 数组字符串 与 旧的纯文本
   selectedTags.forEach((t, i) => {
-    const key = `:tg${i}`;
-    clauses.push(`(topic_tag LIKE ${key})`);
-    params[key] = `%${t}%`;
+    const kj = `:tgjson${i}`;
+    const kp = `:tgplain${i}`;
+    // JSON 形式用带双引号的匹配，避免把 "生命" 误配到 "生命科学"
+    clauses.push(`(topic_tag LIKE ${kj} OR topic_tag LIKE ${kp})`);
+    params[kj] = `%"${t}"%`;
+    params[kp] = `%${t}%`;
   });
 
   const where = clauses.length ? ("WHERE " + clauses.join(" AND ")) : "";

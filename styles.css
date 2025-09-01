@@ -45,6 +45,7 @@ body {
   padding: 24px 12px;
   line-height: 1.6;
   color: #374151;
+
 }
 .about-main p { margin-bottom: 1em; }
 .about-main h2 {
@@ -54,7 +55,9 @@ body {
 .about-main ul {
   margin: 0 0 1em 1.2em;
   padding-left: 1.2em;
+
 }
+.about-main p { margin-bottom: 1em; }
 header, main, footer { max-width: var(--maxw); margin: 0 auto; padding: 12px; }
 header h1 { margin: 8px 0 12px; line-height: 1.2; }
 

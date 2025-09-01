@@ -335,8 +335,8 @@ function render(items, kw) {
     const meta = [
       `<span><strong>期刊：</strong>${escapeHtml(it.journal || '')}</span>`,
       it.type ? `<span><strong>类型：</strong>${escapeHtml(it.type)}</span>` : '',
-      tags.length ? `<span><strong>tag：</strong>${tags.map(t => escapeHtml(t)).join(' / ')}</span>` : '',
-      `<span><strong>日期：</strong>${fmtDate(it.pub_date)}</span>`
+      // tags.length ? `<span><strong>tag：</strong>${tags.map(t => escapeHtml(t)).join(' / ')}</span>` : '',
+      `<span><strong>发表日期：</strong>${fmtDate(it.pub_date)}</span>`
     ].filter(Boolean).join(' · ');
 
     let titleHTML = '';

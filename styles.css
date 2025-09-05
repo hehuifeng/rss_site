@@ -290,8 +290,17 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 }
 .back-to-top:hover {
   background: #374151;   /* hover 更深 */
+  transform: translateY(-2px);
 }
 .back-to-top:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus 环绕 */
+}
+.back-to-top:active svg {
+  transform: scale(0.9);       /* 点击时缩小一点 */
+}
+.back-to-top svg {
+  width: 60%;   /* 占按钮宽度的 60% */
+  height: 60%;  /* 保持比例缩放 */
+  fill: currentColor; /* 跟随按钮文字颜色 */
 }

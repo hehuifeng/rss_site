@@ -271,3 +271,27 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
   color: #374151;
 }
 
+/* 回到顶部按钮 */
+.back-to-top {
+  position: fixed;
+  right: 20px;
+  bottom: 30px;
+  z-index: 1000;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #4b5563;   /* 深灰 */
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  display: none;         /* 默认隐藏，滚动后显示 */
+}
+.back-to-top:hover {
+  background: #374151;   /* hover 更深 */
+}
+.back-to-top:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus 环绕 */
+}

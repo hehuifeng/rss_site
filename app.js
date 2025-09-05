@@ -180,6 +180,38 @@ async function init() {
   runSearch();
 }
 
+// 回到顶部按钮逻辑
+function setupBackToTop() {
+  const btn = document.getElementById('back-to-top');
+  if (!btn) return;
+
+  // 显示/隐藏
+  window.addEventListener('scroll', () => {
+    if (document.documentElement.scrollTop > 200 || document.body.scrollTop > 200) {
+      btn.style.display = 'block';
+    } else {
+      btn.style.display = 'none';
+    }
+  });
+
+  // 点击平滑滚动到顶部
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+// 在 init() 完成后调用
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', () => {
+    init().catch(showErr);
+    setupBackToTop();
+  });
+} else {
+  init().catch(showErr);
+  setupBackToTop();
+}
+
+
 async function populateFilters() {
   // journals
   const journals = query(`

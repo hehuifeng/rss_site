@@ -91,6 +91,59 @@ button { cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .btn-secondary { background: #fff; }
 
+/* 让交互更有手感：过渡 & 轻微提升 */
+#bilingual-toggle,
+#reset {
+  transition: background-color .15s ease, border-color .15s ease,
+              box-shadow .15s ease, transform .06s ease;
+}
+
+/* 悬停：颜色更亮一点，边框提亮，加轻微阴影与 1px 上浮 */
+#bilingual-toggle:hover,
+#reset:hover {
+  background: #eef2ff;              /* 略带蓝感的浅底 */
+  border-color: #93c5fd;            /* 与现有 hover 体系协调 */
+  box-shadow: 0 2px 6px rgba(59,130,246,.15);
+  transform: translateY(-1px);
+}
+
+/* 按下：回落一点，模拟按压 */
+#bilingual-toggle:active,
+#reset:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12) inset;
+}
+
+/* 键盘导航的可见焦点（更易用） */
+#bilingual-toggle:focus-visible,
+#reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.45);
+  border-color: #60a5fa;
+}
+
+/* 避免禁用态也出现动画或阴影 */
+#bilingual-toggle:disabled,
+#reset:disabled {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 用户偏好减少动效时，关闭位移动画（无障碍） */
+@media (prefers-reduced-motion: reduce) {
+  #bilingual-toggle,
+  #reset {
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  #bilingual-toggle:hover,
+  #reset:hover,
+  #bilingual-toggle:active,
+  #reset:active {
+    transform: none;
+  }
+}
+
+
 /* ===== 控件区域：三排网格 ===== */
 .controls { display: grid; gap: 12px; }
 .controls .row { display: grid; gap: 12px; align-items: center; }

@@ -298,7 +298,7 @@ button { cursor: pointer; }
 
 .t-en + .t-cn,
 .a-en + .a-cn {
-  margin-top: .25rem;  /* 中英文之间多留一些空隙 */
+  margin-top: .50rem;  /* 中英文之间多留一些空隙 */
 }
 
 /* 响应式 */

@@ -200,16 +200,6 @@ function setupBackToTop() {
   });
 }
 
-// 在 init() 完成后调用
-if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', () => {
-    init().catch(showErr);
-    setupBackToTop();
-  });
-} else {
-  init().catch(showErr);
-  setupBackToTop();
-}
 
 
 async function populateFilters() {
@@ -546,8 +536,13 @@ function showErr(err){
   else console.error(err);
 }
 
+// 在 init() 完成后调用
 if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', () => init().catch(showErr));
+  window.addEventListener('DOMContentLoaded', () => {
+    init().catch(showErr);
+    setupBackToTop();
+  });
 } else {
   init().catch(showErr);
+  setupBackToTop();
 }

@@ -8,6 +8,7 @@ body {
                "PingFang SC","Hiragino Sans GB","Microsoft YaHei", sans-serif;
   color: #111827;
   background: #f9fafb;
+  line-height: 1.5;
 }
 /* 顶部导航 */
 .top-nav {
@@ -294,6 +295,11 @@ button { cursor: pointer; }
 /* 双语文本细节 */
 .t-en, .a-en { opacity: .85; }
 .t-cn + .t-en, .a-cn + .a-en { margin-top: .25rem; }
+
+.t-en + .t-cn,
+.a-en + .a-cn {
+  margin-top: .25rem;  /* 中英文之间多留一些空隙 */
+}
 
 /* 响应式 */
 @media (max-width: 980px) {

@@ -363,3 +363,5 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
   height: 60%;  /* 保持比例缩放 */
   fill: currentColor; /* 跟随按钮文字颜色 */
 }
+
+.goto-input{width:5rem;margin-left:.5rem;}

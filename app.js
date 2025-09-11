@@ -4,6 +4,7 @@
 
 let db, SQL;
 let PAGE = 1, PAGE_SIZE = 30;
+let TOTAL_PAGES = 1;
 
 const state = {
   bilingual: false,
@@ -320,8 +321,49 @@ function bindEvents() {
   };
 
   // 分页
-  const prev = $('prev'); if (prev) prev.onclick = () => { if (PAGE>1) { PAGE--; runSearch(); } };
-  const next = $('next'); if (next) next.onclick = () => { PAGE++; runSearch(); };
+  const prev = $('prev');
+  if (prev) prev.onclick = () => {
+    if (PAGE > 1) {
+      PAGE--;
+      runSearch();
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // ✅ 新增：换页回到顶部
+    }
+  };
+
+  const next = $('next');
+  if (next) next.onclick = () => {
+    if (PAGE < TOTAL_PAGES) {          // ✅ 防止越界
+      PAGE++;
+      runSearch();
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // ✅
+    }
+  };
+
+  // ✅ 新增：手动跳页（输入 + 按钮/回车）
+  const gotoInput = $('goto-page');
+  const gotoBtn = $('goto-btn');
+
+  function gotoPageFromInput() {
+    const raw = (gotoInput?.value || '').trim();
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return;
+    const target = Math.max(1, Math.min(TOTAL_PAGES, Math.floor(num)));
+    if (target !== PAGE) {
+      PAGE = target;
+      runSearch();
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // ✅
+    }
+  }
+
+  if (gotoBtn) gotoBtn.onclick = gotoPageFromInput;
+  if (gotoInput) {
+    gotoInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        gotoPageFromInput();
+      }
+    });
+  }
 
   // 双语开关
   const biBtn = $('bilingual-toggle');
@@ -474,10 +516,13 @@ function runSearch() {
   document.getElementById('stats').textContent = `共 ${total} 条`;
   document.getElementById('pageinfo').textContent = `第 ${PAGE} 页`;
   document.getElementById('pagecount').textContent = ` / 共 ${totalPages} 页`;
-
+  TOTAL_PAGES = totalPages; // 更新全局总页数
   render(rows, kw);
   document.getElementById('prev').disabled = PAGE <= 1;
   document.getElementById('next').disabled = (offset + rows.length) >= total;
+
+  const gp = document.getElementById('goto-page');
+  if (gp) gp.value = String(PAGE); // 可选：同步显示当前页
 }
 
 function render(items, kw) {

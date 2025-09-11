@@ -72,6 +72,10 @@
         <span id="pageinfo"></span>
         <span id="pagecount"></span> <!-- 新增：总页数 -->
         <button id="next" class="btn btn-secondary">下一页</button>
+
+        <!-- ✅ 新增：手动换页（页码 + 跳转） -->
+        <input id="goto-page" class="goto-input" type="number" min="1" step="1" placeholder="页码" aria-label="输入页码" />
+        <button id="goto-btn" class="btn btn-secondary" title="跳转到指定页">跳转</button>
       </div>
     </main>
   </section>

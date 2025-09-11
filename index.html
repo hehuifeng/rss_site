@@ -39,11 +39,6 @@
             <button class="btn range-btn" data-range="30d" id="range-30d">近30天</button>
           </div>
 
-          <button id="bilingual-toggle" class="btn" aria-pressed="false" title="切换标题与摘要的中英双语显示">
-            双语显示：关
-          </button>
-
-          <button id="reset" class="btn btn-secondary" title="清空所有筛选条件并重置">重置</button>
         </div>
 
         <!-- 第 3 排：tag 按钮（单独成行） -->
@@ -57,6 +52,16 @@
           <span class="type-filter-hint">按类型筛选：</span>
           <div id="type-buttons" class="type-buttons" role="group" aria-label="类型筛选（可多选）"></div>
         </div>
+
+        <!-- 第 5 排：操作按钮（双语显示 + 重置） -->
+        <div class="row row-bottom">
+          <button id="bilingual-toggle" class="btn" aria-pressed="false" title="切换标题与摘要的中英双语显示">
+            双语显示：关
+          </button>
+
+          <button id="reset" class="btn btn-secondary" title="清空所有筛选条件并重置">重置</button>
+        </div>
+
       </div>
     </header>
 
@@ -99,7 +104,7 @@
         <li>Nature Machine Intelligence: <code>https://www.nature.com/natmachintell.rss</code></li>
         <li>Nature Computational Science: <code>https://www.nature.com/natcomputsci.rss</code></li>
       </ul>
-      <p>（如果您有其他期刊的RSS源，欢迎提交 <a href="https://github.com/hehuifeng/rss_site/issues">issue</a>）</p>
+      <p>（如果您有感兴趣的其他期刊的RSS源，欢迎提交 <a href="https://github.com/hehuifeng/rss_site/issues">issue</a>）</p>
 
       <h2>标签与关键词</h2>
       <p class="tag-note">系统会根据标题与摘要中的关键词自动生成标签，用于初步分类与筛选。由于采用自动匹配，标签仅供参考，不能替代人工精细标注。</p>
@@ -116,7 +121,7 @@
         </li>
       </ul>
       
-      <p>页面以纯静态方式展示，数据库在<a href="https://github.com/hehuifeng/rss_site">https://github.com/hehuifeng/rss_site</a>开源，每天早上6:00更新。</p>
+      <p>页面以纯静态方式展示，数据库在<a href="https://github.com/hehuifeng/rss_site">https://github.com/hehuifeng/rss_site</a>开源，每天早上6:00运行更新。</p>
     </main>
 
   </section>

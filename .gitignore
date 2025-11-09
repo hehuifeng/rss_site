@@ -1,0 +1,6 @@
+# Continue
+.continue/
+.continue/*
+!.continue/rules
+
+.qodo/

@@ -228,31 +228,25 @@ async function populateFilters() {
   rows.forEach(r => parseTags(r.topic_tag).forEach(t => all.add(t)));
 
   let tags = Array.from(all);
-  // types -> 渲染为按钮（可多选）
+  // types -> 渲染为下拉菜单
   const typeRows = query(`
     SELECT DISTINCT type AS t FROM articles
     WHERE t IS NOT NULL AND TRIM(t) <> ''
     ORDER BY t COLLATE NOCASE
   `);
-  const typeContainer = document.getElementById('type-buttons');
-  typeContainer.innerHTML = '';
+  const typeSelector = document.getElementById('type-selector');
+  // 清空现有选项，保留默认选项
+  while (typeSelector.children.length > 1) {
+    typeSelector.removeChild(typeSelector.lastChild);
+  }
   typeRows
     .map(r => r.t)
     .filter(Boolean)
     .forEach(t => {
-      const btn = document.createElement('button');
-      btn.className = 'btn type-btn';
-      btn.type = 'button';
-      btn.textContent = t;
-      btn.setAttribute('data-type', t);
-      btn.setAttribute('aria-pressed', 'false');
-      btn.addEventListener('click', () => {
-        const pressed = btn.getAttribute('aria-pressed') !== 'true';
-        btn.setAttribute('aria-pressed', String(pressed));
-        btn.classList.toggle('is-active', pressed);
-        PAGE = 1; runSearch();
-      });
-      typeContainer.appendChild(btn);
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      typeSelector.appendChild(opt);
     });
   // 排序规则：生命科学最前，其他最后，其余按拼音/字母序
   tags.sort((a, b) => {
@@ -301,6 +295,10 @@ function bindEvents() {
   const j = $('journal'); if (j) j.addEventListener('change', () => { PAGE = 1; runSearch(); });
   const df = $('date_from'); if (df) df.addEventListener('change', () => { PAGE = 1; runSearch(); });
   const dt = $('date_to');   if (dt) dt.addEventListener('change', () => { PAGE = 1; runSearch(); });
+  
+  // 类型筛选下拉菜单改变即筛选
+  const typeSelector = $('type-selector');
+  if (typeSelector) typeSelector.addEventListener('change', () => { PAGE = 1; runSearch(); });
 
   // 重置
   const reset = $('reset');
@@ -313,10 +311,9 @@ function bindEvents() {
     document.querySelectorAll('.tag-btn.is-active').forEach(b=>{
       b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
     });
-    // 清空 type 按钮状态（新增）
-    document.querySelectorAll('.type-btn.is-active').forEach(b=>{
-      b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
-    });
+    // 重置类型筛选下拉菜单
+    const typeSelector = $('type-selector');
+    if (typeSelector) typeSelector.value = '';
     PAGE = 1; runSearch();
   };
 
@@ -381,6 +378,15 @@ function bindEvents() {
   document.querySelectorAll('.range-btn').forEach(btn => {
     btn.addEventListener('click', () => setQuickRange(btn.dataset.range));
   });
+
+  // 双语显示悬浮按钮
+  const biFloatBtn = $('bilingual-toggle-float');
+  if (biFloatBtn) {
+    biFloatBtn.addEventListener('click', () => {
+      state.bilingual = !state.bilingual;
+      runSearch();
+    });
+  }
 }
 
 // 简易防抖
@@ -431,10 +437,9 @@ function buildWhere() {
     .map(b => b.getAttribute('data-tag'))
     .filter(Boolean);
 
-  // 3) 选中的类型（按钮式），OR 逻辑
-  const selectedTypes = Array.from(document.querySelectorAll('.type-btn.is-active'))
-    .map(b => b.getAttribute('data-type'))
-    .filter(Boolean);
+  // 3) 选中的类型（下拉菜单）
+  const typeSelector = document.getElementById('type-selector');
+  const selectedTypes = typeSelector && typeSelector.value ? [typeSelector.value] : [];
 
   const clauses = [];
   const params  = {};

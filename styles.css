@@ -93,14 +93,12 @@ button { cursor: pointer; }
 .btn-secondary { background: #fff; }
 
 /* 让交互更有手感：过渡 & 轻微提升 */
-#bilingual-toggle,
 #reset {
   transition: background-color .15s ease, border-color .15s ease,
               box-shadow .15s ease, transform .06s ease;
 }
 
 /* 悬停：颜色更亮一点，边框提亮，加轻微阴影与 1px 上浮 */
-#bilingual-toggle:hover,
 #reset:hover {
   background: #eef2ff;              /* 略带蓝感的浅底 */
   border-color: #93c5fd;            /* 与现有 hover 体系协调 */
@@ -109,14 +107,12 @@ button { cursor: pointer; }
 }
 
 /* 按下：回落一点，模拟按压 */
-#bilingual-toggle:active,
 #reset:active {
   transform: translateY(0);
   box-shadow: 0 1px 3px rgba(0,0,0,.12) inset;
 }
 
 /* 键盘导航的可见焦点（更易用） */
-#bilingual-toggle:focus-visible,
 #reset:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59,130,246,.45);
@@ -124,7 +120,6 @@ button { cursor: pointer; }
 }
 
 /* 避免禁用态也出现动画或阴影 */
-#bilingual-toggle:disabled,
 #reset:disabled {
   transform: none;
   box-shadow: none;
@@ -132,13 +127,10 @@ button { cursor: pointer; }
 
 /* 用户偏好减少动效时，关闭位移动画（无障碍） */
 @media (prefers-reduced-motion: reduce) {
-  #bilingual-toggle,
   #reset {
     transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
   }
-  #bilingual-toggle:hover,
   #reset:hover,
-  #bilingual-toggle:active,
   #reset:active {
     transform: none;
   }
@@ -152,10 +144,10 @@ button { cursor: pointer; }
 /* 第 1 排：关键词 + 期刊 */
 .row-top { grid-template-columns: minmax(340px, 1fr) minmax(220px, 320px); }
 
-/* 第 2 排：提示 + 起始 + 终止 + 快捷时间 + 双语 + 重置
+/* 第 2 排：提示 + 起始 + 终止 + 快捷时间 + 重置
    两个日期输入用 1fr 1fr 等分，保证视觉等宽 */
 .row-actions {
-  grid-template-columns: auto 1fr 1fr auto auto auto;
+  grid-template-columns: auto 1fr 1fr auto auto;
 }
 
 .date-input,
@@ -179,7 +171,7 @@ button { cursor: pointer; }
 .controls input[type="date"],
 .controls input[type="text"],
 .controls input[type="search"],
-#q, #journal, #date_from, #date_to, #bilingual-toggle, #reset, .range-btn {
+#q, #journal, #date_from, #date_to, #reset, .range-btn {
   height: 44px;
   padding: 0 14px;
   font-size: 14px;
@@ -196,7 +188,6 @@ button { cursor: pointer; }
 /* 日期提示与输入 */
 .date-hint { color: #374151; font-size: 14px; white-space: nowrap; }
 #date_from, #date_to { width: 100%; }
-#bilingual-toggle { white-space: nowrap; }
 
 /* ===== tag 按钮筛选 ===== */
 .tag-filter-hint { color:#374151; font-size:14px; line-height: 44px; }
@@ -225,27 +216,28 @@ button { cursor: pointer; }
   color: #0b1021;
 }
 
-/* 类型按钮筛选（样式与 tag 按钮一致） */
-.type-filter-hint { color:#374151; font-size:14px; line-height: 44px; }
-.type-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* 类型筛选下拉菜单 */
+.type-filter-container {
+  position: relative;
+  display: inline-block;
 }
-.type-btn {
+
+.type-filter-hint { 
+  color: #374151; 
+  font-size: 14px; 
+  line-height: 44px; 
+  margin-right: 8px;
+}
+
+#type-selector {
   height: 44px;
   padding: 0 14px;
   font-size: 14px;
-  line-height: 42px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid #d1d5db;
   background: #fff;
-  position: relative;
-}
-.type-btn.is-active {
-  border-color: transparent;
-  background: #e5e7eb;
-  color: #0b1021;
+  cursor: pointer;
+  min-width: 150px;
 }
 
 /* 窄屏换行（可复用 row-tags 的模式） */
@@ -362,6 +354,47 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
   width: 60%;   /* 占按钮宽度的 60% */
   height: 60%;  /* 保持比例缩放 */
   fill: currentColor; /* 跟随按钮文字颜色 */
+}
+
+/* 双语显示悬浮按钮 */
+.bilingual-toggle-float {
+  position: fixed;
+  right: 50px;
+  bottom: 140px; /* 在回到顶部按钮上方 */
+  z-index: 1000;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #3b82f6;   /* 蓝色 */
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bilingual-toggle-float:hover {
+  background: #2563eb;   /* hover 更深 */
+  transform: translateY(-2px);
+}
+
+.bilingual-toggle-float:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus 环绕 */
+}
+
+.bilingual-toggle-float:active {
+  transform: scale(0.95);       /* 点击时缩小一点 */
+}
+
+.bilingual-toggle-float svg {
+  width: 60%;
+  height: 60%;
+  fill: currentColor;
 }
 
 .goto-input{width:5rem;margin-left:.5rem;}

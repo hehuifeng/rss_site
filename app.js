@@ -10,6 +10,14 @@ const state = {
   bilingual: false,
 };
 
+// 更新双语显示按钮文本
+function updateBilingualButton() {
+  const biFloatBtn = document.getElementById('bilingual-toggle-float');
+  if (biFloatBtn) {
+    biFloatBtn.textContent = '双语显示：' + (state.bilingual ? '开' : '关');
+  }
+}
+
 // ===== 自包含 sql.js 加载 =====
 function locateFile(file) { return './' + file; }
 async function ensureSqlJs() {
@@ -177,6 +185,10 @@ async function init() {
   await populateFilters();
   renderLastUpdated();  // ← 新增：显示“最近更新”
   bindEvents();
+  
+  // 初始化双语显示按钮文本
+  updateBilingualButton();
+  
   window.trackVisits?.();
   runSearch();
 }
@@ -370,6 +382,8 @@ function bindEvents() {
       state.bilingual = now;
       biBtn.setAttribute('aria-pressed', String(now));
       biBtn.textContent = '双语显示：' + (now ? '开' : '关');
+      // 同时更新悬浮按钮
+      updateBilingualButton();
       runSearch();
     });
   }
@@ -384,6 +398,7 @@ function bindEvents() {
   if (biFloatBtn) {
     biFloatBtn.addEventListener('click', () => {
       state.bilingual = !state.bilingual;
+      updateBilingualButton();
       runSearch();
     });
   }

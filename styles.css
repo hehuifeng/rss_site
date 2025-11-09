@@ -4,8 +4,8 @@
 html, body { height: 100%; }
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-               "PingFang SC","Hiragino Sans GB","Microsoft YaHei", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial,
+               \"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\", sans-serif;
   color: #111827;
   background: #f9fafb;
   line-height: 1.5;
@@ -168,9 +168,9 @@ button { cursor: pointer; }
 
 /* 输入控件统一 */
 .controls select,
-.controls input[type="date"],
-.controls input[type="text"],
-.controls input[type="search"],
+.controls input[type=\"date\"],
+.controls input[type=\"text\"],
+.controls input[type=\"search\"],
 #q, #journal, #date_from, #date_to, #reset, .range-btn {
   height: 44px;
   padding: 0 14px;
@@ -203,7 +203,7 @@ button { cursor: pointer; }
   position: relative;
 }
 .tag-btn::before {
-  content: "";
+  content: \"\";
   position: absolute;
   inset: 2px;
   border-radius: 999px;
@@ -325,8 +325,8 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 /* 回到顶部按钮 */
 .back-to-top {
   position: fixed;
-  right: 50px;
-  bottom: 80px;
+  right: 20px;
+  bottom: 20px;
   z-index: 1000;
   width: 44px;
   height: 44px;
@@ -359,27 +359,32 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 /* 双语显示悬浮按钮 */
 .bilingual-toggle-float {
   position: fixed;
-  right: 50px;
-  bottom: 140px; /* 在回到顶部按钮上方 */
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 1000;
   width: 44px;
-  height: 44px;
+  min-height: 120px;
   border: none;
-  border-radius: 50%;
+  border-radius: 0 12px 12px 0;
   background: #3b82f6;   /* 蓝色 */
   color: white;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.25);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 10px 0;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
   transition: all 0.2s ease;
 }
 
 .bilingual-toggle-float:hover {
   background: #2563eb;   /* hover 更深 */
-  transform: translateY(-2px);
+  box-shadow: 3px 3px 8px rgba(0,0,0,0.3);
 }
 
 .bilingual-toggle-float:focus {
@@ -388,13 +393,7 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 }
 
 .bilingual-toggle-float:active {
-  transform: scale(0.95);       /* 点击时缩小一点 */
-}
-
-.bilingual-toggle-float svg {
-  width: 60%;
-  height: 60%;
-  fill: currentColor;
+  transform: translateY(-50%) scale(0.98);       /* 点击时缩小一点 */
 }
 
 .goto-input{width:5rem;margin-left:.5rem;}

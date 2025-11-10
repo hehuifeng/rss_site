@@ -199,7 +199,7 @@ button { cursor: pointer; }
 .tag-btn {
   border-radius: 999px;
   border: 1px solid #d1d5db;
-  background: var(--tag-bg-light, #d1fae5); /* 默认浅绿色背景 */
+  background: var(--tag-bg-light, #e0f2fe); /* 默认浅蓝色背景 */
   position: relative;
 }
 .tag-btn::before {
@@ -210,9 +210,21 @@ button { cursor: pointer; }
   background: var(--tag-bg, #e5e7eb);
   opacity: .25;
 }
+.tag-btn[data-tag=\"生命科学\"] {
+  --tag-bg-light: #dcfce7; /* 浅绿色背景 */
+  --tag-bg: #22c55e; /* 按下后的绿色 */
+}
+.tag-btn[data-tag=\"人工智能\"] {
+  --tag-bg-light: #e0f2fe; /* 浅蓝色背景 */
+  --tag-bg: #2563eb; /* 按下后的蓝色 */
+}
+.tag-btn[data-tag=\"其他\"] {
+  --tag-bg-light: #fef9c3; /* 浅黄色背景 */
+  --tag-bg: #f59e0b; /* 按下后的黄色 */
+}
 .tag-btn.is-active {
   border-color: transparent;
-  background: var(--tag-bg, #10b981); /* 按下后的颜色 */
+  background: var(--tag-bg); /* 按下后的颜色 */
   color: #0b1021;
 }
 
@@ -360,7 +372,7 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 .bilingual-toggle-float {
   position: fixed;
   left: auto; /* 移除固定屏幕左边缘 */
-  margin-left: 0; /* 紧贴中间列表与卡片的左边缘 */
+  margin-left: 50px; /* 紧贴中间列表与卡片的左边缘 */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;

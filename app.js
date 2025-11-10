@@ -95,6 +95,25 @@ function hashHsl(tag) {
   const light = 46 + (h % 10);
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
+
+// 把一个 hsl(...) 字符串的亮度调高（生成浅色）
+function lightenHsl(hslStr, delta = 18) {
+  // 兼容两种常见格式："hsl(h s% l%)"（本项目使用此格式）
+  const m = /hsl\(\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%\s*\)/i.exec(hslStr);
+  if (!m) return hslStr;
+  const hue = Number(m[1]);
+  const sat = Number(m[2]);
+  const light = Number(m[3]);
+  const nl = Math.min(95, Math.max(0, Math.round(light + delta)));
+  return `hsl(${hue} ${sat}% ${nl}%)`;
+}
+
+function getTagColors(tag) {
+  const active = hashHsl(tag);
+  // 使未按下颜色更浅一点，默认比 active 更亮
+  const inactive = lightenHsl(active, 50);
+  return { active, inactive };
+}
 // 解析 topic_tag 为 tag 数组：优先 JSON.parse，失败再按老的分隔符切分
 function parseTags(raw) {
   if (!raw) return [];
@@ -274,13 +293,16 @@ async function populateFilters() {
   const container = document.getElementById('tag-buttons');
   container.innerHTML = '';
   tags.forEach(t => {
-    const btn = document.createElement('button');
-    btn.className = 'btn tag-btn';
-    btn.type = 'button';
-    btn.textContent = t;
-    btn.style.setProperty('--tag-bg', hashHsl(t));
-    btn.setAttribute('data-tag', t);
-    btn.setAttribute('aria-pressed', 'false');
+  const btn = document.createElement('button');
+  btn.className = 'btn tag-btn';
+  btn.type = 'button';
+  btn.textContent = t;
+  const colors = getTagColors(t);
+  // 设置两个 CSS 变量：按下色（--tag-bg）和对应的浅色（--tag-bg-light）
+  btn.style.setProperty('--tag-bg', colors.active);
+  btn.style.setProperty('--tag-bg-light', colors.inactive);
+  btn.setAttribute('data-tag', t);
+  btn.setAttribute('aria-pressed', 'false');
     btn.addEventListener('click', () => {
       const pressed = btn.getAttribute('aria-pressed') !== 'true';
       btn.setAttribute('aria-pressed', String(pressed));

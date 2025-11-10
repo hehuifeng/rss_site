@@ -199,34 +199,39 @@ button { cursor: pointer; }
 .tag-btn {
   border-radius: 999px;
   border: 1px solid #d1d5db;
-  background: var(--tag-bg-light, #e0f2fe); /* 默认浅蓝色背景 */
+  /* 未按下时使用变量 --tag-bg-light（由 JS 在生成按钮时设置）
+     保留一个合理的备用色以防 JS 未生效 */
+  background: var(--tag-bg-light, #f3f4f6);
   position: relative;
+  padding: 6px 14px;
+  min-width: 56px;
+  display: inline-flex;            /* 使用 flex 居中文本 */
+  align-items: center;             /* 垂直居中 */
+  justify-content: center;         /* 水平居中 */
+  line-height: normal;             /* 避免继承 .btn 的 line-height 导致错位 */
+  transition: background-color .18s ease, color .12s ease, transform .06s ease;
 }
+
+/* 内层叠加用于制造微妙的立体感，使用按下色并降低不透明度 */
 .tag-btn::before {
-  content: \"\";
+  content: "";
   position: absolute;
   inset: 2px;
   border-radius: 999px;
   background: var(--tag-bg, #e5e7eb);
-  opacity: .25;
+  opacity: .08; /* 更微妙的叠加 */
+  pointer-events: none;
 }
-.tag-btn[data-tag=\"生命科学\"] {
-  --tag-bg-light: #dcfce7; /* 浅绿色背景 */
-  --tag-bg: #22c55e; /* 按下后的绿色 */
-}
-.tag-btn[data-tag=\"人工智能\"] {
-  --tag-bg-light: #e0f2fe; /* 浅蓝色背景 */
-  --tag-bg: #2563eb; /* 按下后的蓝色 */
-}
-.tag-btn[data-tag=\"其他\"] {
-  --tag-bg-light: #fef9c3; /* 浅黄色背景 */
-  --tag-bg: #f59e0b; /* 按下后的黄色 */
-}
+
 .tag-btn.is-active {
   border-color: transparent;
-  background: var(--tag-bg); /* 按下后的颜色 */
+  /* 按下时显示主色（由 JS 设置 --tag-bg） */
+  background: var(--tag-bg);
   color: #0b1021;
 }
+
+/* 空/未设置变量时保持可读性 */
+.tag-btn[aria-pressed="true"] { transform: translateY(-1px); }
 
 /* 类型筛选下拉菜单 */
 .type-filter-container {
@@ -337,8 +342,8 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 /* 回到顶部按钮 */
 .back-to-top {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: 120px;
+  bottom: 200px;
   z-index: 1000;
   width: 44px;
   height: 44px;
@@ -371,20 +376,19 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 /* 双语显示悬浮按钮 */
 .bilingual-toggle-float {
   position: fixed;
-  left: auto; /* 移除固定屏幕左边缘 */
-  margin-left: 100px; /* 紧贴中间列表与卡片的左边缘 */
+  right: 120px; /* 移除固定屏幕左边缘 */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;
   width: 44px;
   min-height: 120px;
   border: none;
-  border-radius: 12px 0 0 12px; /* 左边圆角，右边直角 */
+  border-radius: 0 12px 12px 0; /* 左边圆角，右边直角 */
   background: #3b82f6;   /* 蓝色 */
   color: white;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 2px 2px 6px rgba(0,0,0,0.25);
+  box-shadow: 0px 0px 0px rgba(0,0,0,0.25);
   display: flex;
   flex-direction: column;
   align-items: center;

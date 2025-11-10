@@ -199,7 +199,7 @@ button { cursor: pointer; }
 .tag-btn {
   border-radius: 999px;
   border: 1px solid #d1d5db;
-  background: var(--tag-bg-light, #f3f4f6); /* 浅色背景 */
+  background: var(--tag-bg-light, #d1fae5); /* 默认浅绿色背景 */
   position: relative;
 }
 .tag-btn::before {
@@ -212,7 +212,7 @@ button { cursor: pointer; }
 }
 .tag-btn.is-active {
   border-color: transparent;
-  background: var(--tag-bg, #e5e7eb); /* 按下后的颜色 */
+  background: var(--tag-bg, #10b981); /* 按下后的颜色 */
   color: #0b1021;
 }
 
@@ -360,14 +360,14 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 .bilingual-toggle-float {
   position: fixed;
   left: auto; /* 移除固定屏幕左边缘 */
-  margin-left: 12px; /* 紧贴中间内容左边缘 */
+  margin-left: 0; /* 紧贴中间列表与卡片的左边缘 */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;
   width: 44px;
   min-height: 120px;
   border: none;
-  border-radius: 0 12px 12px 0;
+  border-radius: 12px 0 0 12px; /* 左边圆角，右边直角 */
   background: #3b82f6;   /* 蓝色 */
   color: white;
   font-size: 14px;

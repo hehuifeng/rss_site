@@ -372,7 +372,7 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 .bilingual-toggle-float {
   position: fixed;
   left: auto; /* 移除固定屏幕左边缘 */
-  margin-left: 50px; /* 紧贴中间列表与卡片的左边缘 */
+  margin-left: 100px; /* 紧贴中间列表与卡片的左边缘 */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;

@@ -199,7 +199,7 @@ button { cursor: pointer; }
 .tag-btn {
   border-radius: 999px;
   border: 1px solid #d1d5db;
-  background: #fff;
+  background: var(--tag-bg-light, #f3f4f6); /* 浅色背景 */
   position: relative;
 }
 .tag-btn::before {
@@ -212,7 +212,7 @@ button { cursor: pointer; }
 }
 .tag-btn.is-active {
   border-color: transparent;
-  background: var(--tag-bg, #e5e7eb);
+  background: var(--tag-bg, #e5e7eb); /* 按下后的颜色 */
   color: #0b1021;
 }
 
@@ -359,7 +359,8 @@ mark { background: #fff3a3; padding: 0 .08em; border-radius: 2px; }
 /* 双语显示悬浮按钮 */
 .bilingual-toggle-float {
   position: fixed;
-  left: 0;
+  left: auto; /* 移除固定屏幕左边缘 */
+  margin-left: 12px; /* 紧贴中间内容左边缘 */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;

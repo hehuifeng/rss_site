@@ -1,74 +1,40 @@
-// Patched for schema:
-// articles(uid, feed_url, journal, title_en, title_cn, type, pub_date, doi,
-//          article_url, abstract_en, abstract_cn, raw_jsonld, fetched_at, last_updated_at, topic_tag)
+// ====== Paper Tracker (Fast first paint + Local full-cache + Single-select tags + Real PV/UV) ======
 
-let db, SQL;
-let PAGE = 1, PAGE_SIZE = 30;
+let PAGE = 1;
+let PAGE_SIZE = 30;
+let TOTAL = 0;
 let TOTAL_PAGES = 1;
 
 const state = {
   bilingual: false,
+  filtersLoaded: false,
+  selectedTag: null,          // 单选 tag（互斥）
+  allReady: false,            // IndexedDB 是否已有全量
+  allPapers: null,            // 内存缓存（提升速度）
+  lastUpdatedAt: null,        // 服务器 last_updated_at（来自 /api/filters 或 /api/papers）
 };
 
-// 更新双语显示按钮文本
-function updateBilingualButton() {
-  const biFloatBtn = document.getElementById('bilingual-toggle-float');
-  if (biFloatBtn) {
-    biFloatBtn.textContent = '双语显示：' + (state.bilingual ? '开' : '关');
-  }
+function $(id){ return document.getElementById(id); }
+
+// ------------------------ utils ------------------------
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[m]));
 }
 
-// ===== 自包含 sql.js 加载 =====
-function locateFile(file) { return './' + file; }
-async function ensureSqlJs() {
-  if (typeof initSqlJs === 'function') return;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js';
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('fallback CDN sql.js 加载失败'));
-    document.head.appendChild(s);
-  });
-  if (typeof initSqlJs !== 'function') {
-    throw new Error('initSqlJs 未定义，请确认 sql-wasm.js/sql-wasm.wasm 放在站点根目录或网络可达');
-  }
+function fmtDate(s){
+  if(!s) return '';
+  const m=/^(\d{4}-\d{2}-\d{2})/.exec(String(s));
+  return m?m[1]:String(s);
 }
 
-// ===== 访问量（挂全局，避免未定义）=====
-function trackVisits() {
-  try {
-    const LS = window.localStorage;
-    const PV_KEY = 'pv_total';
-    const UV_ID = 'uv_id';
-    const UV_TOTAL = 'uv_total';
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
-    const pv = Number(LS.getItem(PV_KEY) || '0') + 1;
-    LS.setItem(PV_KEY, String(pv));
-
-    if (!LS.getItem(UV_ID)) {
-      LS.setItem(UV_ID, `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      const uv = Number(LS.getItem(UV_TOTAL) || '0') + 1;
-      LS.setItem(UV_TOTAL, String(uv));
-    }
-    const uv = Number(LS.getItem(UV_TOTAL) || '1');
-
-    const bar = document.getElementById('site-stats');
-    if (bar) bar.textContent = `本站访问量（本机统计）：浏览 ${pv} · 访客 ${uv}`;
-  } catch (e) {
-    console.warn('访问量统计失败：', e);
-  }
-}
-window.trackVisits = trackVisits;
-
-// ===== 工具函数 =====
-function fmtDate(s){ if(!s) return ''; const m = /^(\d{4}-\d{2}-\d{2})/.exec(s); return m? m[1] : s; }
-function escapeHtml(str){ return (str||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) }
-function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function highlightAndEscape(text, kw){
   const s = String(text || '');
   const q = String(kw || '').trim();
   if (!q) return escapeHtml(s);
-  // 逗号或空白都作为分隔
   const terms = q.split(/[,\s]+/).filter(Boolean);
   if (!terms.length) return escapeHtml(s);
   const pattern = terms.map(escapeRegExp).join('|');
@@ -79,26 +45,36 @@ function highlightAndEscape(text, kw){
   return esc;
 }
 
-function query(sql, params = {}) {
-  const stmt = db.prepare(sql);
-  stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free();
-  return rows;
+function debounce(fn, wait=200){
+  let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(null,args), wait); };
 }
-function hashHsl(tag) {
-  let h = 0;
-  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  const sat = 55 + (h % 20);
-  const light = 46 + (h % 10);
+
+function todayStr(){
+  const d=new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const da=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${da}`;
+}
+
+function setDefaultDatesOnce(){
+  const dt = $('date_to');
+  if (dt && !dt.value) dt.value = todayStr();
+}
+
+// ------------------------ tag colors ------------------------
+function hashHsl(tag){
+  let h=0;
+  for(let i=0;i<tag.length;i++) h=(h*31+tag.charCodeAt(i))>>>0;
+  const hue=h%360;
+  const sat=55+(h%20);
+  const light=46+(h%10);
+  // 注意：你 CSS 里使用的是 `hsl(h s% l%)` 这种新写法；我们也按同样格式返回
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 
-// 把一个 hsl(...) 字符串的亮度调高（生成浅色）
-function lightenHsl(hslStr, delta = 18) {
-  // 兼容两种常见格式："hsl(h s% l%)"（本项目使用此格式）
+function lightenHsl(hslStr, delta = 45) {
+  // 支持：hsl(210 60% 50%) 形式
   const m = /hsl\(\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%\s*\)/i.exec(hslStr);
   if (!m) return hslStr;
   const hue = Number(m[1]);
@@ -110,469 +86,138 @@ function lightenHsl(hslStr, delta = 18) {
 
 function getTagColors(tag) {
   const active = hashHsl(tag);
-  // 使未按下颜色更浅一点，默认比 active 更亮
-  const inactive = lightenHsl(active, 50);
+  const inactive = lightenHsl(active, 45);
   return { active, inactive };
 }
-// 解析 topic_tag 为 tag 数组：优先 JSON.parse，失败再按老的分隔符切分
-function parseTags(raw) {
-  if (!raw) return [];
-  const s = String(raw).trim();
 
-  // 优先尝试 JSON 数组（如 '["生命科学","人工智能"]'）
+// ------------------------ parse tags ------------------------
+function parseTags(raw){
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(x=>String(x).trim()).filter(Boolean);
+  const s = String(raw).trim();
   if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('"') && s.endsWith('"'))) {
     try {
       const parsed = JSON.parse(s);
       const arr = Array.isArray(parsed) ? parsed : [parsed];
-      return Array.from(
-        new Set(
-          arr
-            .map(x => String(x).trim())
-            .filter(Boolean)
-        )
-      );
-    } catch (e) {
-      // 不是合法 JSON，退回到普通切分
-    }
+      return Array.from(new Set(arr.map(x=>String(x).trim()).filter(Boolean)));
+    } catch {}
   }
-
-  // 兼容旧格式：逗号/分号/竖线/空白等
-  return Array.from(
-    new Set(
-      s
-        .split(/[,;｜|，；/]+|\s+/g)
-        .map(t => t.replace(/^"+|"+$/g, '').trim()) // 去掉意外的包裹引号
-        .filter(Boolean)
-    )
-  );
-}
-function todayStr(){
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${da}`;
-}
-function setDefaultDatesOnce(){
-  const dt = document.getElementById('date_to');
-  // 仅当用户尚未手动选择时，给终止日期赋值为今天
-  if (dt && !dt.value) dt.value = todayStr();
-}
-// 把 last_updated_at 格式化为本地“YYYY-MM-DD HH:MM”
-function fmtLocalDateTime(input){
-  if (!input) return '';
-  // 兼容三种常见格式：ISO 字符串 / 秒级时间戳 / 毫秒级时间戳
-  let d;
-  if (/^\d{13}$/.test(String(input))) {
-    d = new Date(Number(input));              // ms
-  } else if (/^\d{10}$/.test(String(input))) {
-    d = new Date(Number(input) * 1000);       // s
-  } else {
-    d = new Date(String(input));              // ISO
-  }
-  if (isNaN(d)) return String(input);
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,'0');
-  const da = String(d.getDate()).padStart(2,'0');
-  const hh = String(d.getHours()).padStart(2,'0');
-  const mm = String(d.getMinutes()).padStart(2,'0');
-  return `${y}-${m}-${da} ${hh}:${mm}`;
+  return Array.from(new Set(
+    s.split(/[,;｜|，；/]+|\s+/g).map(t=>t.replace(/^"+|"+$/g,'').trim()).filter(Boolean)
+  ));
 }
 
-// 查询全库最近更新时间并渲染
-function renderLastUpdated(){
-  try{
-    const row = query(`SELECT COUNT(*) AS n, MAX(last_updated_at) AS ts FROM articles`)[0];
-    const el = document.getElementById('db-updated');
-    if (el && row) {
-      const ts = row.ts ? fmtLocalDateTime(row.ts) : '—';
-      el.textContent = `数据库共 ${row.n} 条 · 最近更新：${fmtLocalDateTime(row.ts)}`;
-    }
-  }catch(e){
-    console.warn('获取最近更新时间失败：', e);
-  }
-}
-// ===== 入口 =====
-async function init() {
-  await ensureSqlJs();
-  SQL = await initSqlJs({ locateFile });
+// ------------------------ IndexedDB (KV store) ------------------------
+const DB_NAME = 'paper_tracker';
+const DB_VER  = 1;
+const STORE   = 'kv';
 
-  const res = await fetch('data/rss_state.db');
-  const buf = await res.arrayBuffer();
-  db = new SQL.Database(new Uint8Array(buf));
-
-  await populateFilters();
-  renderLastUpdated();  // ← 新增：显示“最近更新”
-  bindEvents();
-  
-  // 初始化双语显示按钮文本
-  updateBilingualButton();
-  
-  window.trackVisits?.();
-  runSearch();
-}
-
-// 回到顶部按钮逻辑
-function setupBackToTop() {
-  const btn = document.getElementById('back-to-top');
-  if (!btn) return;
-
-  // 显示/隐藏
-  window.addEventListener('scroll', () => {
-    if (document.documentElement.scrollTop > 200 || document.body.scrollTop > 200) {
-      btn.style.display = 'block';
-    } else {
-      btn.style.display = 'none';
-    }
-  });
-
-  // 点击平滑滚动到顶部
-  btn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+function idbOpen(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
   });
 }
 
-
-
-async function populateFilters() {
-  // journals
-  const journals = query(`
-    SELECT journal AS j, COUNT(*) c
-    FROM articles
-    WHERE journal IS NOT NULL AND TRIM(journal) <> ''
-    GROUP BY journal
-    ORDER BY c DESC, j ASC
-  `);
-  const selJ = document.getElementById('journal');
-  journals.forEach(({j}) => {
-    const opt = document.createElement('option');
-    opt.value = j; opt.textContent = j;
-    selJ.appendChild(opt);
-  });
-
-  // tags -> 渲染为按钮
-  const rows = query(`
-    SELECT topic_tag FROM articles
-    WHERE topic_tag IS NOT NULL AND TRIM(topic_tag) <> ''
-  `);
-  const all = new Set();
-  rows.forEach(r => parseTags(r.topic_tag).forEach(t => all.add(t)));
-
-  let tags = Array.from(all);
-  // types -> 渲染为下拉菜单
-  const typeRows = query(`
-    SELECT DISTINCT type AS t FROM articles
-    WHERE t IS NOT NULL AND TRIM(t) <> ''
-    ORDER BY t COLLATE NOCASE
-  `);
-  const typeSelector = document.getElementById('type-selector');
-  // 清空现有选项，保留默认选项
-  while (typeSelector.children.length > 1) {
-    typeSelector.removeChild(typeSelector.lastChild);
-  }
-  typeRows
-    .map(r => r.t)
-    .filter(Boolean)
-    .forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t;
-      opt.textContent = t;
-      typeSelector.appendChild(opt);
-    });
-  // 排序规则：生命科学最前，其他最后，其余按拼音/字母序
-  tags.sort((a, b) => {
-    if (a === '生命科学') return -1;
-    if (b === '生命科学') return 1;
-
-    if (a === '其他') return 1;
-    if (b === '其他') return -1;
-
-    return a.localeCompare(b, 'zh-Hans-CN');
-  });
-
-  const container = document.getElementById('tag-buttons');
-  container.innerHTML = '';
-  tags.forEach(t => {
-  const btn = document.createElement('button');
-  btn.className = 'btn tag-btn';
-  btn.type = 'button';
-  btn.textContent = t;
-  const colors = getTagColors(t);
-  // 设置两个 CSS 变量：按下色（--tag-bg）和对应的浅色（--tag-bg-light）
-  btn.style.setProperty('--tag-bg', colors.active);
-  btn.style.setProperty('--tag-bg-light', colors.inactive);
-  btn.setAttribute('data-tag', t);
-  btn.setAttribute('aria-pressed', 'false');
-    btn.addEventListener('click', () => {
-      const pressed = btn.getAttribute('aria-pressed') !== 'true';
-      btn.setAttribute('aria-pressed', String(pressed));
-      btn.classList.toggle('is-active', pressed);
-      PAGE = 1; runSearch();
-    });
-    container.appendChild(btn);
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(STORE,'readonly');
+    const st = tx.objectStore(STORE);
+    const req = st.get(key);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
   });
 }
 
-// ===== 事件绑定（即时触发）=====
-function bindEvents() {
-  const $ = (id) => document.getElementById(id);
+async function idbSet(key, val){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    const st = tx.objectStore(STORE);
+    const req = st.put(val, key);
+    req.onsuccess = ()=> resolve(true);
+    req.onerror = ()=> reject(req.error);
+  });
+}
 
-  // 关键词：即时触发（防抖）
-  const q = $('q');
-  if (q) {
-    const debounced = debounce(() => { PAGE = 1; runSearch(); }, 200);
-    q.addEventListener('input', debounced);
-    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
-  }
-
-  // 期刊/日期 改变即筛选
-  const j = $('journal'); if (j) j.addEventListener('change', () => { PAGE = 1; runSearch(); });
-  const df = $('date_from'); if (df) df.addEventListener('change', () => { PAGE = 1; runSearch(); });
-  const dt = $('date_to');   if (dt) dt.addEventListener('change', () => { PAGE = 1; runSearch(); });
-  
-  // 类型筛选下拉菜单改变即筛选
-  const typeSelector = $('type-selector');
-  if (typeSelector) typeSelector.addEventListener('change', () => { PAGE = 1; runSearch(); });
-
-  // 重置
-  const reset = $('reset');
-  if (reset) reset.onclick = () => {
-    if (q) q.value = '';
-    if (j) j.value = '';
-    if (df) df.value = '';
-    if (dt) dt.value = todayStr();   // 终止日期重置为今天
-    // 清空 tag 按钮状态
-    document.querySelectorAll('.tag-btn.is-active').forEach(b=>{
-      b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
-    });
-    // 重置类型筛选下拉菜单
-    const typeSelector = $('type-selector');
-    if (typeSelector) typeSelector.value = '';
-    PAGE = 1; runSearch();
-  };
-
-  // 分页
-  const prev = $('prev');
-  if (prev) prev.onclick = () => {
-    if (PAGE > 1) {
-      PAGE--;
-      runSearch();
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // ✅ 新增：换页回到顶部
-    }
-  };
-
-  const next = $('next');
-  if (next) next.onclick = () => {
-    if (PAGE < TOTAL_PAGES) {          // ✅ 防止越界
-      PAGE++;
-      runSearch();
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // ✅
-    }
-  };
-
-  // ✅ 新增：手动跳页（输入 + 按钮/回车）
-  const gotoInput = $('goto-page');
-  const gotoBtn = $('goto-btn');
-
-  function gotoPageFromInput() {
-    const raw = (gotoInput?.value || '').trim();
-    const num = Number(raw);
-    if (!Number.isFinite(num)) return;
-    const target = Math.max(1, Math.min(TOTAL_PAGES, Math.floor(num)));
-    if (target !== PAGE) {
-      PAGE = target;
-      runSearch();
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // ✅
-    }
-  }
-
-  if (gotoBtn) gotoBtn.onclick = gotoPageFromInput;
-  if (gotoInput) {
-    gotoInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        gotoPageFromInput();
-      }
-    });
-  }
-
-  // 双语开关
+// ------------------------ UI helpers ------------------------
+function updateBilingualButton(){
+  const biFloatBtn = $('bilingual-toggle-float');
+  if (biFloatBtn) biFloatBtn.textContent = '双语显示：' + (state.bilingual ? '开' : '关');
   const biBtn = $('bilingual-toggle');
   if (biBtn) {
-    biBtn.addEventListener('click', () => {
-      const now = biBtn.getAttribute('aria-pressed') !== 'true';
-      state.bilingual = now;
-      biBtn.setAttribute('aria-pressed', String(now));
-      biBtn.textContent = '双语显示：' + (now ? '开' : '关');
-      // 同时更新悬浮按钮
-      updateBilingualButton();
-      runSearch();
-    });
+    biBtn.textContent = '双语显示：' + (state.bilingual ? '开' : '关');
+    biBtn.setAttribute('aria-pressed', String(state.bilingual));
   }
+}
 
-  // 快捷时间按钮
-  document.querySelectorAll('.range-btn').forEach(btn => {
-    btn.addEventListener('click', () => setQuickRange(btn.dataset.range));
+function renderSkeleton(msg='加载中…'){
+  const el=$('list'); if(!el) return;
+  el.innerHTML = `
+    <div class="card">
+      <div class="title">${escapeHtml(msg)}</div>
+      <div class="meta">正在加载数据…</div>
+    </div>
+  `;
+}
+
+function showErr(err){
+  const el=$('list');
+  if (el) el.innerHTML = `<pre>${escapeHtml(err?.stack || String(err))}</pre>`;
+  else console.error(err);
+}
+
+// ------------------------ API with AbortController ------------------------
+let currentAbort = null;
+
+async function apiGetJson(path, {signal} = {}){
+  const res = await fetch(path, {
+    headers: {'Accept':'application/json'},
+    cache: 'no-cache',
+    signal
   });
-
-  // 双语显示悬浮按钮
-  const biFloatBtn = $('bilingual-toggle-float');
-  if (biFloatBtn) {
-    biFloatBtn.addEventListener('click', () => {
-      state.bilingual = !state.bilingual;
-      updateBilingualButton();
-      runSearch();
-    });
+  if (!res.ok) {
+    const text = await res.text().catch(()=> '');
+    throw new Error(`HTTP ${res.status}: ${path}\n${text.slice(0,300)}`);
   }
+  return await res.json();
 }
 
-// 简易防抖
-function debounce(fn, wait=200){
-  let t; return (...args) => { clearTimeout(t); t = setTimeout(()=>fn.apply(null,args), wait); };
+function buildQueryParams(){
+  const kwRaw = ($('q')?.value ?? '').trim();
+  const journal = ($('journal')?.value ?? '').trim();
+  const df = ($('date_from')?.value ?? '').trim();
+  const dt = ($('date_to')?.value ?? '').trim();
+  const type = ($('type-selector')?.value ?? '').trim();
+  const tag  = state.selectedTag;
+
+  const params = new URLSearchParams();
+  params.set('page', String(PAGE));
+  params.set('page_size', String(PAGE_SIZE));
+  if (kwRaw) params.set('q', kwRaw);
+  if (journal) params.set('journal', journal);
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (type) params.set('type', type);
+  if (tag) params.set('tags', tag); // 后端如果支持 tags=xxx
+  return { params, kwRaw, journal, df, dt, type, tag };
 }
 
-// 快捷时间
-function setQuickRange(range) {
-  const $ = (id) => document.getElementById(id);
-  const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const start = new Date(end);
+// ------------------------ render list ------------------------
+function render(items, kw){
+  const el = $('list');
+  if (!el) return;
 
-  if (range === '3d') start.setDate(end.getDate() - 2);
-  else if (range === '7d') start.setDate(end.getDate() - 6);
-  else if (range === '30d') start.setDate(end.getDate() - 29);
-
-  const fmtLocal = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const da = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${da}`;
-  };
-
-  $('date_from').value = fmtLocal(start);
-  $('date_to').value   = fmtLocal(end);
-
-  PAGE = 1; runSearch();
-}
-
-// WHERE 构造（支持多关键词、tag AND、type OR、journal、日期区间）
-function buildWhere() {
-  const getVal = (id) => (document.getElementById(id)?.value ?? '').trim();
-
-  const kwRaw   = getVal('q');        // 原始关键词串（用于前端高亮）
-  const journal = getVal('journal');
-  const df      = getVal('date_from');
-  const dt      = getVal('date_to');
-
-  // 1) 关键词：用英文逗号分隔，AND 逻辑；每个词在多字段 OR
-  const kwTerms = kwRaw
-    ? kwRaw.split(',').map(s => s.trim()).filter(Boolean)
-    : [];
-
-  // 2) 选中的 tag（按钮式），AND 逻辑；兼容 JSON 数组/旧文本
-  const selectedTags = Array.from(document.querySelectorAll('.tag-btn.is-active'))
-    .map(b => b.getAttribute('data-tag'))
-    .filter(Boolean);
-
-  // 3) 选中的类型（下拉菜单）
-  const typeSelector = document.getElementById('type-selector');
-  const selectedTypes = typeSelector && typeSelector.value ? [typeSelector.value] : [];
-
-  const clauses = [];
-  const params  = {};
-
-  // 关键词：AND（每个 term 建一组 OR 子句）
-  kwTerms.forEach((term, i) => {
-    const k = `:kw${i}`;
-    clauses.push("(" +
-      "title_en    LIKE " + k + " OR " +
-      "title_cn    LIKE " + k + " OR " +
-      "abstract_en LIKE " + k + " OR " +
-      "abstract_cn LIKE " + k + " OR " +
-      "doi         LIKE " + k +
-    ")");
-    params[k] = `%${term}%`;
-  });
-
-  // 期刊
-  if (journal) {
-    clauses.push("journal = :journal");
-    params[":journal"] = journal;
-  }
-
-  // 日期
-  if (df) { clauses.push("(pub_date >= :df)"); params[":df"] = df; }
-  if (dt) { clauses.push("(pub_date <= :dt)"); params[":dt"] = dt; }
-
-  // tag：AND；每个 tag 既匹配 JSON 数组中的 "tag" 也兼容旧的包含匹配
-  selectedTags.forEach((t, i) => {
-    const kj = `:tgjson${i}`;
-    const kp = `:tgplain${i}`;
-    clauses.push(`(topic_tag LIKE ${kj} OR topic_tag LIKE ${kp})`);
-    params[kj] = `%"${t}"%`;  // 精准命中 JSON 数组项
-    params[kp] = `%${t}%`;    // 兼容旧纯文本
-  });
-
-  // 类型：OR；选 1 个等价于 "="，选多个用 IN (...)
-  if (selectedTypes.length === 1) {
-    clauses.push("(type = :ty0)");
-    params[":ty0"] = selectedTypes[0];
-  } else if (selectedTypes.length > 1) {
-    const ph = selectedTypes.map((_, i) => `:ty${i}`);
-    clauses.push(`(type IN (${ph.join(', ')}))`);
-    selectedTypes.forEach((t, i) => { params[`:ty${i}`] = t; });
-  }
-
-  const where = clauses.length ? ("WHERE " + clauses.join(" AND ")) : "";
-  return { where, params, kw: kwRaw };
-}
-
-
-function runSearch() {
-  const { where, params, kw } = buildWhere();
-
-  const cntRow = query(`SELECT COUNT(*) AS n FROM articles ${where}`, params)[0];
-  const total = cntRow ? cntRow.n : 0;
-
-  const offset = (PAGE - 1) * PAGE_SIZE;
-
-  const rows = query(`
-    SELECT
-      uid,
-      journal,
-      type,
-      topic_tag,
-      pub_date,
-      doi,
-      article_url,
-      title_en, title_cn,
-      abstract_en, abstract_cn
-    FROM articles
-    ${where}
-    ORDER BY pub_date DESC, fetched_at DESC, uid DESC
-    LIMIT :limit OFFSET :offset
-  `, { ...params, ":limit": PAGE_SIZE, ":offset": offset });
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  document.getElementById('stats').textContent = `共 ${total} 条`;
-  document.getElementById('pageinfo').textContent = `第 ${PAGE} 页`;
-  document.getElementById('pagecount').textContent = ` / 共 ${totalPages} 页`;
-  TOTAL_PAGES = totalPages; // 更新全局总页数
-  render(rows, kw);
-  document.getElementById('prev').disabled = PAGE <= 1;
-  document.getElementById('next').disabled = (offset + rows.length) >= total;
-
-  const gp = document.getElementById('goto-page');
-  if (gp) gp.value = String(PAGE); // 可选：同步显示当前页
-}
-
-function render(items, kw) {
-  const el = document.getElementById('list');
-  el.innerHTML = items.map(it => {
+  el.innerHTML = (items || []).map(it=>{
     const tags = parseTags(it.topic_tag);
     const tagsHtml = tags.length
-      ? `<div class="tags">` + tags.map(t => `
+      ? `<div class="tags">` + tags.map(t=>`
           <span class="tag-chip" style="--tag-bg:${hashHsl(t)}">${escapeHtml(t)}</span>
         `).join('') + `</div>`
       : '';
@@ -580,26 +225,22 @@ function render(items, kw) {
     const meta = [
       `<span><strong>期刊：</strong>${escapeHtml(it.journal || '')}</span>`,
       it.type ? `<span><strong>类型：</strong>${escapeHtml(it.type)}</span>` : '',
-      // tags.length ? `<span><strong>tag：</strong>${tags.map(t => escapeHtml(t)).join(' / ')}</span>` : '',
       `<span><strong>发表日期：</strong>${fmtDate(it.pub_date)}</span>`
     ].filter(Boolean).join(' · ');
 
-    let titleHTML = '';
-    let absHTML = '';
-
+    let titleHTML='', absHTML='';
     if (state.bilingual) {
       const ten = it.title_en ? `<div class="t-en">${highlightAndEscape(it.title_en, kw)}</div>` : '';
       const tcn = it.title_cn ? `<div class="t-cn">${highlightAndEscape(it.title_cn, kw)}</div>` : '';
       const aen = it.abstract_en ? `<div class="a-en">${highlightAndEscape(it.abstract_en, kw)}</div>` : '';
       const acn = it.abstract_cn ? `<div class="a-cn">${highlightAndEscape(it.abstract_cn, kw)}</div>` : '';
-      const hasTitle = ten || tcn;
-      titleHTML = `<div class="title">${hasTitle ? (ten + tcn) : '(无标题)'}</div>`;
-      absHTML   = `<div class="abs">${aen}${acn}</div>`;
+      titleHTML = `<div class="title">${(ten||tcn) ? (ten+tcn) : '(无标题)'}</div>`;
+      absHTML = `<div class="abs">${aen}${acn}</div>`;
     } else {
       const titlePref = it.title_en || it.title_cn || '(无标题)';
-      const absPref   = it.abstract_en || it.abstract_cn || '';
+      const absPref = it.abstract_en || it.abstract_cn || '';
       titleHTML = `<div class="title">${highlightAndEscape(titlePref, kw)}</div>`;
-      absHTML   = absPref ? `<div class="abs">${highlightAndEscape(absPref, kw)}</div>` : '';
+      absHTML = absPref ? `<div class="abs">${highlightAndEscape(absPref, kw)}</div>` : '';
     }
 
     const doi = it.doi ? `<span class="badge">DOI</span> <a href="https://doi.org/${escapeHtml(it.doi)}" target="_blank" rel="noopener">${escapeHtml(it.doi)}</a>` : '';
@@ -617,19 +258,508 @@ function render(items, kw) {
   }).join('');
 }
 
-function showErr(err){
-  const el = document.getElementById('list');
-  if (el) el.innerHTML = `<pre>${escapeHtml(err.stack || String(err))}</pre>`;
-  else console.error(err);
+// ------------------------ Filters rendering ------------------------
+function sortTags(tags){
+  tags.sort((a,b)=>{
+    if (a === '生命科学') return -1;
+    if (b === '生命科学') return 1;
+    if (a === '其他') return 1;
+    if (b === '其他') return -1;
+    return a.localeCompare(b, 'zh-Hans-CN');
+  });
+  return tags;
 }
 
-// 在 init() 完成后调用
-if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', () => {
-    init().catch(showErr);
-    setupBackToTop();
+function clearSelectKeepFirst(selectEl){
+  if (!selectEl) return;
+  while (selectEl.children.length > 1) selectEl.removeChild(selectEl.lastChild);
+}
+
+function setBtnVisual(btn, pressed){
+  const t = (btn.dataset.tag || btn.textContent || '').trim();
+  const {active, inactive} = getTagColors(t);
+  btn.style.setProperty('--tag-bg', active);
+  btn.style.setProperty('--tag-bg-light', inactive);
+
+  // ✅ 兜底：直接写背景色，确保一定有颜色
+  btn.style.backgroundColor = pressed ? active : inactive;
+  btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+  btn.classList.toggle('is-active', pressed);
+}
+
+function bindTagButtonSingleSelect(btn){
+  if (btn.__boundTag) return;
+  btn.__boundTag = true;
+
+  btn.addEventListener('click', ()=>{
+    const t = (btn.dataset.tag || btn.textContent || '').trim();
+    const isPressed = btn.getAttribute('aria-pressed') === 'true';
+
+    // 规则：再点一次同一个 -> 取消过滤
+    if (isPressed) {
+      state.selectedTag = null;
+      document.querySelectorAll('.tag-btn').forEach(b=>setBtnVisual(b,false));
+    } else {
+      state.selectedTag = t;
+      document.querySelectorAll('.tag-btn').forEach(b=>{
+        const bt = (b.dataset.tag || b.textContent || '').trim();
+        setBtnVisual(b, bt === t);
+      });
+    }
+
+    PAGE = 1;
+    fetchPapersPage().catch(showErr);
   });
-} else {
-  init().catch(showErr);
+}
+
+function paintAndBindExistingTagButtons(){
+  const btns = Array.from(document.querySelectorAll('.tag-btn'));
+  if (!btns.length) return;
+
+  btns.forEach(btn=>{
+    // 默认未按下
+    if (!btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed','false');
+    setBtnVisual(btn, btn.getAttribute('aria-pressed') === 'true');
+    bindTagButtonSingleSelect(btn);
+  });
+}
+
+function renderTagButtons(tags){
+  const container = $('tag-buttons');
+  if (!container) return;
+
+  container.innerHTML = '';
+  sortTags(tags).forEach(t=>{
+    const btn = document.createElement('button');
+    btn.className = 'btn tag-btn';
+    btn.type = 'button';
+    btn.textContent = t;
+    btn.dataset.tag = t;
+    btn.setAttribute('aria-pressed','false');
+
+    // 设置颜色 + 绑定单选互斥
+    setBtnVisual(btn, false);
+    bindTagButtonSingleSelect(btn);
+
+    container.appendChild(btn);
+  });
+}
+
+async function loadFilters(){
+  if (state.filtersLoaded) return;
+
+  try{
+    const data = await apiGetJson('/api/filters');
+    state.lastUpdatedAt = data.last_updated_at || state.lastUpdatedAt || null;
+
+    // journals
+    clearSelectKeepFirst($('journal'));
+    (data.journals||[]).forEach(({name})=>{
+      const opt=document.createElement('option');
+      opt.value=name; opt.textContent=name;
+      $('journal')?.appendChild(opt);
+    });
+
+    // types
+    clearSelectKeepFirst($('type-selector'));
+    (data.types||[]).forEach(({name})=>{
+      const opt=document.createElement('option');
+      opt.value=name; opt.textContent=name;
+      $('type-selector')?.appendChild(opt);
+    });
+
+    // tags
+    renderTagButtons((data.tags||[]).map(x=>x.name).filter(Boolean));
+
+    // db updated bar
+    if ($('db-updated')) {
+      const ts = data.last_updated_at ? String(data.last_updated_at).replace('T',' ').slice(0,16) : '—';
+      $('db-updated').textContent = `数据库共 ${data.total ?? ''} 条 · 最近更新：${ts}`;
+    }
+
+    state.filtersLoaded = true;
+  }catch(e){
+    console.warn('filters 加载失败（不影响使用）：', e);
+    state.filtersLoaded = true;
+  }
+}
+
+// ------------------------ Local full-cache: load + background download (daily max once) ------------------------
+async function loadLocalAllIntoMemory(){
+  // 读 IDB -> 内存（避免每次都查 IDB）
+  try{
+    const all = await idbGet('papers_all');
+    if (Array.isArray(all) && all.length) {
+      state.allPapers = all;
+      state.allReady = true;
+      return true;
+    }
+  } catch(e){
+    console.warn('读取本地全量失败：', e);
+  }
+  return false;
+}
+
+function kwTerms(kwRaw){
+  const terms = String(kwRaw || '').trim().split(/[,\s]+/).filter(Boolean);
+  return terms.map(s=>s.toLowerCase());
+}
+
+function localFilter(all, {kwRaw, journal, df, dt, type, tag}){
+  const terms = kwTerms(kwRaw);
+  const hasKw = terms.length > 0;
+
+  return all.filter(it=>{
+    if (journal && it.journal !== journal) return false;
+    if (type && it.type !== type) return false;
+
+    const pd = fmtDate(it.pub_date || '');
+    if (df && pd && pd < df) return false;
+    if (dt && pd && pd > dt) return false;
+
+    if (tag) {
+      const tags = parseTags(it.topic_tag);
+      if (!tags.includes(tag)) return false;
+    }
+
+    if (hasKw) {
+      const hay = `${it.title_en||''} ${it.title_cn||''} ${it.abstract_en||''} ${it.abstract_cn||''} ${it.doi||''}`.toLowerCase();
+      for (const t of terms) if (!hay.includes(t)) return false;
+    }
+
+    return true;
+  });
+}
+
+async function localQueryAndRender(){
+  if (!state.allReady || !Array.isArray(state.allPapers)) return false;
+
+  const { kwRaw, journal, df, dt, type, tag } = buildQueryParams();
+
+  // 过滤
+  const filtered = localFilter(state.allPapers, {kwRaw, journal, df, dt, type, tag});
+
+  // 分页
+  TOTAL = filtered.length;
+  TOTAL_PAGES = Math.max(1, Math.ceil(TOTAL / PAGE_SIZE));
+  PAGE = Math.max(1, Math.min(PAGE, TOTAL_PAGES));
+
+  const start = (PAGE-1)*PAGE_SIZE;
+  const items = filtered.slice(start, start + PAGE_SIZE);
+
+  // stats
+  if ($('stats')) $('stats').textContent = `共 ${TOTAL} 条`;
+  if ($('pageinfo')) $('pageinfo').textContent = `第 ${PAGE} 页`;
+  if ($('pagecount')) $('pagecount').textContent = ` / 共 ${TOTAL_PAGES} 页`;
+
+  // db updated
+  const localTs = await idbGet('papers_last_updated_at').catch(()=>null);
+  if ($('db-updated') && localTs) {
+    const ts = String(localTs).replace('T',' ').slice(0,16);
+    $('db-updated').textContent = `数据库共 ${TOTAL} 条 · 最近更新：${ts}`;
+  }
+
+  render(items, kwRaw);
+
+  if ($('prev')) $('prev').disabled = PAGE <= 1;
+  if ($('next')) $('next').disabled = PAGE >= TOTAL_PAGES;
+  const gp = $('goto-page'); if (gp) gp.value = String(PAGE);
+
+  return true;
+}
+
+async function downloadAllPapersInBackgroundDailyMax(){
+  // 避免重复进入
+  if (downloadAllPapersInBackgroundDailyMax._running) return;
+  downloadAllPapersInBackgroundDailyMax._running = true;
+
+  try{
+    // “每天最多下载一次”
+    const today = todayStr();
+    const lastSyncDay = await idbGet('papers_last_sync_day').catch(()=>null);
+    if (lastSyncDay === today) return;
+
+    // 如果本地没有全量，也要下（即便今天已经同步过也不会发生，因为 lastSyncDay==today 会 return）
+    // 先取一下服务器 last_updated_at（用 /api/filters 最省）
+    let serverMeta = null;
+    try{
+      serverMeta = await apiGetJson('/api/filters');
+    }catch(e){
+      // filters 挂了也不影响主功能，这里就不下载全量
+      console.warn('获取服务器 meta 失败：', e);
+      return;
+    }
+
+    const serverTs = serverMeta.last_updated_at || null;
+    const localTs  = await idbGet('papers_last_updated_at').catch(()=>null);
+
+    // 如果本地已有全量，并且 serverTs == localTs，那今天就不必重下（但仍写 lastSyncDay 防止重复）
+    if (state.allReady && localTs && serverTs && localTs === serverTs) {
+      await idbSet('papers_last_sync_day', today);
+      return;
+    }
+
+    // 分页拉全量（注意：这是后台动作，不阻塞 UI）
+    const pageSize = 1000;
+    let page = 1;
+    let all = [];
+    let total = Infinity;
+
+    while(all.length < total){
+      const data = await apiGetJson(`/api/papers?page=${page}&page_size=${pageSize}`);
+      const items = data.items || [];
+      total = Number(data.total ?? (all.length + items.length));
+      all = all.concat(items);
+      page += 1;
+
+      if (items.length === 0) break;
+      // 让浏览器喘气：避免卡 UI
+      await new Promise(r=>setTimeout(r, 0));
+    }
+
+    if (all.length) {
+      await idbSet('papers_all', all);
+      if (serverTs) await idbSet('papers_last_updated_at', serverTs);
+      await idbSet('papers_last_sync_day', today);
+
+      // 更新内存缓存：后续点击立刻“本地化”
+      state.allPapers = all;
+      state.allReady  = true;
+    }
+  } finally {
+    downloadAllPapersInBackgroundDailyMax._running = false;
+  }
+}
+
+// ------------------------ Remote fallback: server page fetch ------------------------
+async function fetchPapersPageRemote(){
+  const { params, kwRaw } = buildQueryParams();
+  const url = `/api/papers?${params.toString()}`;
+
+  // 取消上一个请求，避免连点卡顿
+  if (currentAbort) currentAbort.abort();
+  currentAbort = new AbortController();
+
+  renderSkeleton('正在加载…');
+
+  const data = await apiGetJson(url, {signal: currentAbort.signal});
+  const items = data.items || [];
+  TOTAL = Number(data.total ?? items.length ?? 0);
+  TOTAL_PAGES = Math.max(1, Math.ceil(TOTAL / PAGE_SIZE));
+
+  if ($('stats')) $('stats').textContent = `共 ${TOTAL} 条`;
+  if ($('pageinfo')) $('pageinfo').textContent = `第 ${PAGE} 页`;
+  if ($('pagecount')) $('pagecount').textContent = ` / 共 ${TOTAL_PAGES} 页`;
+
+  if (data.last_updated_at && $('db-updated')) {
+    const ts = String(data.last_updated_at).replace('T',' ').slice(0,16);
+    $('db-updated').textContent = `数据库共 ${TOTAL} 条 · 最近更新：${ts}`;
+    state.lastUpdatedAt = data.last_updated_at;
+  }
+
+  render(items, kwRaw);
+
+  if ($('prev')) $('prev').disabled = PAGE <= 1;
+  if ($('next')) $('next').disabled = PAGE >= TOTAL_PAGES;
+  const gp = $('goto-page'); if (gp) gp.value = String(PAGE);
+}
+
+async function fetchPapersPage(){
+  // ✅ 优先本地
+  const ok = await localQueryAndRender();
+  if (ok) return;
+
+  // ❌ 本地还没全量：走后端分页
+  await fetchPapersPageRemote();
+}
+
+// ------------------------ Real PV/UV (requires backend) ------------------------
+function getOrCreateUvId(){
+  try{
+    const LS = window.localStorage;
+    const k = 'paper_uv_id';
+    let v = LS.getItem(k);
+    if (!v) {
+      v = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      LS.setItem(k, v);
+    }
+    return v;
+  }catch{
+    return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+async function trackVisitsReal(){
+  const bar = $('site-stats');
+  const uv_id = getOrCreateUvId();
+
+  // 真实计数：需要后端提供 /api/metrics/visit
+  try{
+    const res = await fetch('/api/metrics/visit', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Accept':'application/json'},
+      body: JSON.stringify({ uv_id }),
+      cache: 'no-cache'
+    });
+    if (!res.ok) throw new Error(`metrics HTTP ${res.status}`);
+    const data = await res.json();
+
+    // 期望返回：{ pv_total: number, uv_total: number }
+    const pv = Number(data.pv_total ?? 0);
+    const uv = Number(data.uv_total ?? 0);
+
+    if (bar) bar.textContent = `本站访问量：浏览 ${pv} · 访客 ${uv}`;
+    return;
+  }catch(e){
+    // fallback：本机统计（假的）
+    try{
+      const LS = window.localStorage;
+      const PV_KEY = 'pv_total_local';
+      const UV_KEY = 'uv_total_local';
+
+      const pv = Number(LS.getItem(PV_KEY) || '0') + 1;
+      LS.setItem(PV_KEY, String(pv));
+
+      let uv = Number(LS.getItem(UV_KEY) || '0');
+      // uv 用 uv_id 是否首次生成来决定，这里简单处理：如果没有 uv_mark 则 +1
+      const UV_MARK = 'uv_marked';
+      if (!LS.getItem(UV_MARK)) { LS.setItem(UV_MARK,'1'); uv += 1; LS.setItem(UV_KEY, String(uv)); }
+
+      if (bar) bar.textContent = `本站访问量（本机统计，非真实）：浏览 ${pv} · 访客 ${uv}`;
+    }catch{}
+  }
+}
+
+// ------------------------ events ------------------------
+function bindEvents(){
+  const q=$('q');
+  if (q){
+    const debounced = debounce(()=>{ PAGE=1; fetchPapersPage().catch(showErr); }, 200);
+    q.addEventListener('input', debounced);
+    q.addEventListener('keydown', (e)=>{ if(e.key==='Enter') e.preventDefault(); });
+  }
+
+  const j=$('journal'); if (j) j.addEventListener('change', ()=>{ PAGE=1; fetchPapersPage().catch(showErr); });
+  const df=$('date_from'); if (df) df.addEventListener('change', ()=>{ PAGE=1; fetchPapersPage().catch(showErr); });
+  const dt=$('date_to'); if (dt) dt.addEventListener('change', ()=>{ PAGE=1; fetchPapersPage().catch(showErr); });
+
+  const ty=$('type-selector'); if (ty) ty.addEventListener('change', ()=>{ PAGE=1; fetchPapersPage().catch(showErr); });
+
+  const reset=$('reset');
+  if (reset) reset.onclick=()=>{
+    if (q) q.value='';
+    if (j) j.value='';
+    if (df) df.value='';
+    if (dt) dt.value=todayStr();
+    if (ty) ty.value='';
+
+    // 清 tag（互斥）
+    state.selectedTag = null;
+    document.querySelectorAll('.tag-btn').forEach(b=>setBtnVisual(b,false));
+
+    PAGE=1; fetchPapersPage().catch(showErr);
+  };
+
+  const prev=$('prev'), next=$('next');
+  if (prev) prev.onclick=()=>{
+    if (PAGE>1){ PAGE--; fetchPapersPage().catch(showErr); window.scrollTo({top:0,behavior:'smooth'}); }
+  };
+  if (next) next.onclick=()=>{
+    if (PAGE<TOTAL_PAGES){ PAGE++; fetchPapersPage().catch(showErr); window.scrollTo({top:0,behavior:'smooth'}); }
+  };
+
+  const gotoInput=$('goto-page'), gotoBtn=$('goto-btn');
+  const go=()=>{
+    const num = Number((gotoInput?.value||'').trim());
+    if (!Number.isFinite(num)) return;
+    const target = Math.max(1, Math.min(TOTAL_PAGES, Math.floor(num)));
+    if (target!==PAGE){ PAGE=target; fetchPapersPage().catch(showErr); window.scrollTo({top:0,behavior:'smooth'}); }
+  };
+  if (gotoBtn) gotoBtn.onclick=go;
+  if (gotoInput) gotoInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); go(); } });
+
+  const biBtn=$('bilingual-toggle');
+  if (biBtn) biBtn.addEventListener('click', ()=>{
+    state.bilingual=!state.bilingual;
+    updateBilingualButton();
+    fetchPapersPage().catch(showErr);
+  });
+
+  const biFloat=$('bilingual-toggle-float');
+  if (biFloat) biFloat.addEventListener('click', ()=>{
+    state.bilingual=!state.bilingual;
+    updateBilingualButton();
+    fetchPapersPage().catch(showErr);
+  });
+
+  document.querySelectorAll('.range-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const range = btn.dataset.range;
+      const now=new Date();
+      const end=new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const start=new Date(end);
+      if (range==='3d') start.setDate(end.getDate()-2);
+      else if (range==='7d') start.setDate(end.getDate()-6);
+      else if (range==='30d') start.setDate(end.getDate()-29);
+
+      const fmt=(d)=>{
+        const y=d.getFullYear();
+        const m=String(d.getMonth()+1).padStart(2,'0');
+        const da=String(d.getDate()).padStart(2,'0');
+        return `${y}-${m}-${da}`;
+      };
+      $('date_from').value=fmt(start);
+      $('date_to').value=fmt(end);
+      PAGE=1; fetchPapersPage().catch(showErr);
+    });
+  });
+}
+
+function setupBackToTop(){
+  const btn=$('back-to-top');
+  if(!btn) return;
+  window.addEventListener('scroll', ()=>{
+    if(document.documentElement.scrollTop>200||document.body.scrollTop>200) btn.style.display='block';
+    else btn.style.display='none';
+  });
+  btn.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
+}
+
+// ------------------------ init ------------------------
+async function init(){
+  setDefaultDatesOnce();
+  updateBilingualButton();
+
+  // ✅ 先把 HTML 里已有的 tag（如果你写死了 3 个按钮）上色并绑定
+  paintAndBindExistingTagButtons();
+
+  bindEvents();
   setupBackToTop();
+
+  // ✅ 真实 PV/UV（需后端）
+  trackVisitsReal().catch(()=>{});
+
+  // ✅ 先尝试加载本地全量 -> 有就秒开
+  const hasLocalAll = await loadLocalAllIntoMemory();
+
+  if (hasLocalAll) {
+    PAGE = 1;
+    await localQueryAndRender();
+  } else {
+    // 没有全量：先拉第一页，保证首屏可用
+    PAGE = 1;
+    await fetchPapersPageRemote();
+  }
+
+  // ✅ 并行加载 filters（不阻塞首屏）
+  loadFilters().catch(()=>{});
+
+  // ✅ 后台：每天最多下载一次全量，完成后后续点击全部走本地
+  downloadAllPapersInBackgroundDailyMax().catch(()=>{});
+}
+
+if (document.readyState==='loading'){
+  window.addEventListener('DOMContentLoaded', ()=>{ init().catch(showErr); });
+}else{
+  init().catch(showErr);
 }

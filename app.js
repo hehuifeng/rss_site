@@ -303,12 +303,32 @@ async function populateFilters() {
   btn.style.setProperty('--tag-bg-light', colors.inactive);
   btn.setAttribute('data-tag', t);
   btn.setAttribute('aria-pressed', 'false');
+    // 三个互斥 tag
+    const EXCLUSIVE_TAGS = new Set(['生命科学', '人工智能', '其他']);
+
     btn.addEventListener('click', () => {
-      const pressed = btn.getAttribute('aria-pressed') !== 'true';
-      btn.setAttribute('aria-pressed', String(pressed));
-      btn.classList.toggle('is-active', pressed);
-      PAGE = 1; runSearch();
+      const tag = btn.getAttribute('data-tag');
+      const willPress = btn.getAttribute('aria-pressed') !== 'true';
+
+      // 如果点击的是互斥组内按钮，并且这次要按下
+      if (EXCLUSIVE_TAGS.has(tag) && willPress) {
+        document.querySelectorAll('.tag-btn.is-active').forEach(b => {
+          const t = b.getAttribute('data-tag');
+          if (t && EXCLUSIVE_TAGS.has(t) && t !== tag) {
+            b.classList.remove('is-active');
+            b.setAttribute('aria-pressed', 'false');
+          }
+        });
+      }
+
+      // 正常切换自身状态
+      btn.setAttribute('aria-pressed', String(willPress));
+      btn.classList.toggle('is-active', willPress);
+
+      PAGE = 1;
+      runSearch();
     });
+
     container.appendChild(btn);
   });
 }

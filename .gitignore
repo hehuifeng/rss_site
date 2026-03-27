@@ -1,5 +1,6 @@
 # Continue
 .continue/
+.claude
 .continue/*
 !.continue/rules
 

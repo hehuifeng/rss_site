@@ -12,9 +12,12 @@ const state = {
 
 // 更新双语显示按钮文本
 function updateBilingualButton() {
-  const biFloatBtn = document.getElementById('bilingual-toggle-float');
-  if (biFloatBtn) {
-    biFloatBtn.textContent = '双语显示：' + (state.bilingual ? '开' : '关');
+  const biBtn = document.getElementById('bilingual-toggle-float');
+  if (biBtn) {
+    const span = biBtn.querySelector('span');
+    if (span) span.textContent = '双语：' + (state.bilingual ? '开' : '关');
+    biBtn.setAttribute('aria-pressed', String(state.bilingual));
+    biBtn.classList.toggle('is-active', state.bilingual);
   }
 }
 
@@ -109,8 +112,14 @@ function lightenHsl(hslStr, delta = 18) {
 }
 
 function getTagColors(tag) {
-  const active = hashHsl(tag);
-  // 使未按下颜色更浅一点，默认比 active 更亮
+  // 预定义颜色，避免哈希碰撞
+  const PRESET = {
+    '生命科学': 'hsl(142 71% 45%)',
+    '人工智能': 'hsl(246 71% 52%)',
+    '3D打印和增材制造': 'hsl(24 90% 50%)',
+    '其他': 'hsl(220 14% 46%)',
+  };
+  const active = PRESET[tag] || hashHsl(tag);
   const inactive = lightenHsl(active, 50);
   return { active, inactive };
 }
@@ -192,42 +201,98 @@ function renderLastUpdated(){
     console.warn('获取最近更新时间失败：', e);
   }
 }
+// ===== 数字动画 =====
+function animateCount(el, target) {
+  const duration = 300;
+  const start = performance.now();
+  const from = parseInt(el.textContent.replace(/\D/g, '')) || 0;
+  if (from === target) { el.textContent = `共 ${target} 条`; return; }
+  function tick(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - (1 - progress) * (1 - progress);
+    const current = Math.round(from + (target - from) * eased);
+    el.textContent = `共 ${current} 条`;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 // ===== 入口 =====
 async function init() {
+  const overlay = document.getElementById('db-loading-overlay');
+  const progressEl = document.getElementById('db-loading-progress');
+
+  // 阶段1：加载 SQL.js WASM
+  if (progressEl) progressEl.textContent = '正在初始化数据库引擎...';
   await ensureSqlJs();
   SQL = await initSqlJs({ locateFile });
 
+  // 阶段2：下载数据库（带进度）
+  if (progressEl) progressEl.textContent = '正在下载论文数据库（约 15MB）...';
   const res = await fetch('data/rss_state.db');
-  const buf = await res.arrayBuffer();
-  db = new SQL.Database(new Uint8Array(buf));
+  const contentLength = res.headers.get('Content-Length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+  let received = 0;
+  const reader = res.body.getReader();
+  const chunks = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (total > 0 && progressEl) {
+      const pct = Math.round((received / total) * 100);
+      progressEl.textContent = `正在下载论文数据库... ${pct}%（${(received / 1024 / 1024).toFixed(1)} MB）`;
+    }
+  }
+
+  // 合并 chunks
+  const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+  const buf = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buf.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  if (progressEl) progressEl.textContent = '正在打开数据库...';
+  db = new SQL.Database(buf);
+
+  // 隐藏 loading overlay（带淡出动画）
+  if (overlay) {
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
 
   await populateFilters();
-  renderLastUpdated();  // ← 新增：显示“最近更新”
+  renderLastUpdated();
   bindEvents();
-  
-  // 初始化双语显示按钮文本
   updateBilingualButton();
-  
   window.trackVisits?.();
   runSearch();
 }
 
 // 回到顶部按钮逻辑
-function setupBackToTop() {
-  const btn = document.getElementById('back-to-top');
-  if (!btn) return;
+function setupFabGroup() {
+  const topBtn = document.getElementById('back-to-top');
+  if (!topBtn) return;
 
-  // 显示/隐藏
+  let ticking = false;
   window.addEventListener('scroll', () => {
-    if (document.documentElement.scrollTop > 200 || document.body.scrollTop > 200) {
-      btn.style.display = 'block';
-    } else {
-      btn.style.display = 'none';
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const show = document.documentElement.scrollTop > 200 || document.body.scrollTop > 200;
+        topBtn.style.display = show ? 'flex' : 'none';
+        ticking = false;
+      });
+      ticking = true;
     }
   });
 
-  // 点击平滑滚动到顶部
-  btn.addEventListener('click', () => {
+  topBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
@@ -304,7 +369,7 @@ async function populateFilters() {
   btn.setAttribute('data-tag', t);
   btn.setAttribute('aria-pressed', 'false');
     // 三个互斥 tag
-    const EXCLUSIVE_TAGS = new Set(['生命科学', '人工智能', '其他']);
+    const EXCLUSIVE_TAGS = new Set(['生命科学', '人工智能', '3D打印和增材制造', '其他']);
 
     btn.addEventListener('click', () => {
       const tag = btn.getAttribute('data-tag');
@@ -354,13 +419,20 @@ function bindEvents() {
   const typeSelector = $('type-selector');
   if (typeSelector) typeSelector.addEventListener('change', () => { PAGE = 1; runSearch(); });
 
-  // 重置
-  const reset = $('reset');
-  if (reset) reset.onclick = () => {
+  // 搜索框内 X 按钮：只清空关键词
+  const resetQ = $('reset');
+  if (resetQ) resetQ.onclick = () => {
+    if (q) q.value = '';
+    PAGE = 1; runSearch();
+  };
+
+  // 重置所有筛选条件
+  const resetAll = $('reset-all');
+  if (resetAll) resetAll.onclick = () => {
     if (q) q.value = '';
     if (j) j.value = '';
     if (df) df.value = '';
-    if (dt) dt.value = todayStr();   // 终止日期重置为今天
+    if (dt) dt.value = todayStr();
     // 清空 tag 按钮状态
     document.querySelectorAll('.tag-btn.is-active').forEach(b=>{
       b.classList.remove('is-active'); b.setAttribute('aria-pressed','false');
@@ -368,8 +440,16 @@ function bindEvents() {
     // 重置类型筛选下拉菜单
     const typeSelector = $('type-selector');
     if (typeSelector) typeSelector.value = '';
+    // 清空快捷时间按钮 active 状态
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     PAGE = 1; runSearch();
   };
+
+  // 空状态重置按钮
+  const emptyReset = $('empty-reset');
+  if (emptyReset) {
+    emptyReset.onclick = () => { resetAll?.click(); };
+  }
 
   // 分页
   const prev = $('prev');
@@ -417,16 +497,12 @@ function bindEvents() {
   }
 
   // 双语开关
-  const biBtn = $('bilingual-toggle');
+  const biBtn = $('bilingual-toggle-float');
   if (biBtn) {
     biBtn.addEventListener('click', () => {
-      const now = biBtn.getAttribute('aria-pressed') !== 'true';
-      state.bilingual = now;
-      biBtn.setAttribute('aria-pressed', String(now));
-      biBtn.textContent = '双语显示：' + (now ? '开' : '关');
-      // 同时更新悬浮按钮
+      state.bilingual = !state.bilingual;
       updateBilingualButton();
-      runSearch();
+      runSearch('bilingual');
     });
   }
 
@@ -434,16 +510,6 @@ function bindEvents() {
   document.querySelectorAll('.range-btn').forEach(btn => {
     btn.addEventListener('click', () => setQuickRange(btn.dataset.range));
   });
-
-  // 双语显示悬浮按钮
-  const biFloatBtn = $('bilingual-toggle-float');
-  if (biFloatBtn) {
-    biFloatBtn.addEventListener('click', () => {
-      state.bilingual = !state.bilingual;
-      updateBilingualButton();
-      runSearch();
-    });
-  }
 }
 
 // 简易防抖
@@ -471,6 +537,11 @@ function setQuickRange(range) {
 
   $('date_from').value = fmtLocal(start);
   $('date_to').value   = fmtLocal(end);
+
+  // 更新快捷按钮 active 状态
+  document.querySelectorAll('.range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === range);
+  });
 
   PAGE = 1; runSearch();
 }
@@ -548,7 +619,16 @@ function buildWhere() {
 }
 
 
-function runSearch() {
+function runSearch(animateMode = 'filter') {
+  const listEl = document.getElementById('list');
+  const loadingEl = document.getElementById('search-loading');
+  const emptyEl = document.getElementById('empty-state');
+  const statsEl = document.getElementById('stats');
+
+  // 显示 loading，隐藏列表和空状态
+  if (loadingEl) loadingEl.hidden = false;
+  if (emptyEl) emptyEl.hidden = true;
+
   const { where, params, kw } = buildWhere();
 
   const cntRow = query(`SELECT COUNT(*) AS n FROM articles ${where}`, params)[0];
@@ -575,32 +655,102 @@ function runSearch() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  document.getElementById('stats').textContent = `共 ${total} 条`;
-  document.getElementById('pageinfo').textContent = `第 ${PAGE} 页`;
-  document.getElementById('pagecount').textContent = ` / 共 ${totalPages} 页`;
-  TOTAL_PAGES = totalPages; // 更新全局总页数
-  render(rows, kw);
+  // 隐藏 loading
+  if (loadingEl) loadingEl.hidden = true;
+
+  // 空结果处理
+  if (total === 0 && rows.length === 0) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.hidden = false;
+    document.getElementById('pageinfo').textContent = '';
+    document.getElementById('pagecount').textContent = '';
+  } else {
+    if (emptyEl) emptyEl.hidden = true;
+    document.getElementById('pageinfo').textContent = `第 ${PAGE} 页`;
+    document.getElementById('pagecount').textContent = ` / 共 ${totalPages} 页`;
+    render(rows, kw, animateMode);
+  }
+
+  // 更新统计（带数字动画）
+  animateCount(statsEl, total);
+
+  TOTAL_PAGES = totalPages;
   document.getElementById('prev').disabled = PAGE <= 1;
   document.getElementById('next').disabled = (offset + rows.length) >= total;
 
   const gp = document.getElementById('goto-page');
-  if (gp) gp.value = String(PAGE); // 可选：同步显示当前页
+  if (gp) gp.value = String(PAGE);
 }
 
-function render(items, kw) {
+// FLIP 高度弹性动画（供 render 调用）
+// 弹性曲线
+const SPRING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+// 记录每张卡片直接子元素的相对位置（相对于卡片顶部）
+function recordChildPos(listEl) {
+  const map = new Map();
+  listEl.querySelectorAll('.card').forEach(card => {
+    if (!card.dataset.uid) return;
+    const top = card.getBoundingClientRect().top;
+    const pos = [];
+    card.querySelectorAll(':scope > *').forEach(c => {
+      pos.push(c.getBoundingClientRect().top - top);
+    });
+    map.set(card.dataset.uid, pos);
+  });
+  return map;
+}
+
+// 弹性过渡某个属性，结束后自动清理内联样式
+function springProp(el, prop, from, to) {
+  el.style.transition = 'none';
+  el.style[prop] = from;
+  void el.offsetHeight;
+  el.style.transition = `${prop} 400ms ${SPRING}`;
+  el.style[prop] = to;
+  const done = () => { el.style[prop] = ''; el.style.transition = ''; };
+  el.addEventListener('transitionend', done, { once: true });
+  setTimeout(done, 500);
+}
+
+// 对卡片内子元素做 FLIP 位移动画
+function flipChildren(card, uid, oMap, nMap) {
+  const oPos = oMap.get(uid);
+  const nPos = nMap.get(uid);
+  if (!oPos || !nPos) return;
+  const children = card.querySelectorAll(':scope > *');
+  const len = Math.min(oPos.length, nPos.length, children.length);
+  for (let i = 0; i < len; i++) {
+    const delta = nPos[i] - oPos[i];
+    if (Math.abs(delta) < 1) continue;
+    springProp(children[i], 'transform', `translateY(${-delta}px)`, 'translateY(0)');
+  }
+}
+
+function render(items, kw, mode = 'filter') {
   const el = document.getElementById('list');
-  el.innerHTML = items.map(it => {
+
+  // 双语模式：先记录每张卡片的旧高度
+  const oldHeights = new Map();
+  if (mode === 'bilingual') {
+    el.querySelectorAll('.card').forEach(card => {
+      if (card.dataset.uid) {
+        oldHeights.set(card.dataset.uid, card.offsetHeight);
+      }
+    });
+  }
+
+  const html = items.map(it => {
     const tags = parseTags(it.topic_tag);
     const tagsHtml = tags.length
       ? `<div class="tags">` + tags.map(t => `
-          <span class="tag-chip" style="--tag-bg:${hashHsl(t)}">${escapeHtml(t)}</span>
+          <span class="tag-chip" style="--tag-bg:${getTagColors(t).active}">${escapeHtml(t)}</span>
         `).join('') + `</div>`
       : '';
 
     const meta = [
       `<span><strong>期刊：</strong>${escapeHtml(it.journal || '')}</span>`,
       it.type ? `<span><strong>类型：</strong>${escapeHtml(it.type)}</span>` : '',
-      // tags.length ? `<span><strong>tag：</strong>${tags.map(t => escapeHtml(t)).join(' / ')}</span>` : '',
       `<span><strong>发表日期：</strong>${fmtDate(it.pub_date)}</span>`
     ].filter(Boolean).join(' · ');
 
@@ -622,11 +772,11 @@ function render(items, kw) {
       absHTML   = absPref ? `<div class="abs">${highlightAndEscape(absPref, kw)}</div>` : '';
     }
 
-    const doi = it.doi ? `<span class="badge">DOI</span> <a href="https://doi.org/${escapeHtml(it.doi)}" target="_blank" rel="noopener">${escapeHtml(it.doi)}</a>` : '';
+    const doi = it.doi ? `<span class="doi-group"><span class="badge">DOI</span> <a href="https://doi.org/${escapeHtml(it.doi)}" target="_blank" rel="noopener">${escapeHtml(it.doi)}</a></span>` : '';
     const link = it.article_url ? `<a href="${escapeHtml(it.article_url)}" target="_blank" rel="noopener">原文链接</a>` : '';
 
     return `
-      <div class="card">
+      <div class="card" data-uid="${it.uid}">
         ${titleHTML}
         ${tagsHtml}
         <div class="meta">${meta}</div>
@@ -635,6 +785,90 @@ function render(items, kw) {
       </div>
     `;
   }).join('');
+
+  // ===== 动画分两种模式 =====
+
+  if (mode === 'bilingual' && oldHeights.size > 0) {
+
+    if (!state.bilingual) {
+      // ===== 关闭双语：文字淡出 + 高度收缩 + 子元素弹性上移 同时进行 =====
+
+      const oldCP = recordChildPos(el);
+
+      // 偷看：隐藏中文文字后测新高度和新子元素位置
+      const cnNodes = el.querySelectorAll('.t-cn, .a-cn');
+      cnNodes.forEach(n => n.style.display = 'none');
+      const newCP = recordChildPos(el);
+      const newHeights = new Map();
+      el.querySelectorAll('.card').forEach(card => {
+        if (card.dataset.uid) newHeights.set(card.dataset.uid, card.offsetHeight);
+      });
+      cnNodes.forEach(n => n.style.display = '');
+
+      // 同时启动：文字淡出 + 高度收缩 + 子元素弹性上移
+      cnNodes.forEach(node => {
+        node.style.transition = 'opacity 300ms ease, transform 300ms ease';
+        node.style.opacity = '0';
+        node.style.transform = 'translateY(-8px)';
+      });
+
+      el.querySelectorAll('.card').forEach(card => {
+        const uid = card.dataset.uid;
+        const oldH = oldHeights.get(uid);
+        const newH = newHeights.get(uid);
+        if (oldH != null && newH != null && Math.abs(newH - oldH) > 2) {
+          springProp(card, 'height', oldH + 'px', newH + 'px');
+        }
+        flipChildren(card, uid, oldCP, newCP);
+      });
+
+      setTimeout(() => {
+        el.innerHTML = html;
+        el.classList.remove('fade-in');
+      }, 420);
+
+    } else {
+      // ===== 开启双语：高度弹性 + 中文文字淡入 + 子元素弹性下移 =====
+
+      const oldCP = recordChildPos(el);
+      el.innerHTML = html;
+      el.classList.remove('fade-in');
+      el.classList.add('bilingual-anim');
+
+      const newCP = recordChildPos(el);
+      el.querySelectorAll('.card').forEach(card => {
+        const uid = card.dataset.uid;
+        const oldH = oldHeights.get(uid);
+        if (oldH == null) return;
+        const newH = card.offsetHeight;
+        if (Math.abs(newH - oldH) > 2) {
+          springProp(card, 'height', oldH + 'px', newH + 'px');
+        }
+        flipChildren(card, uid, oldCP, newCP);
+      });
+
+      setTimeout(() => el.classList.remove('bilingual-anim'), 500);
+    }
+
+  } else {
+    // 筛选变化：淡入淡出
+    el.classList.remove('fade-in');
+    const oldCards = el.querySelectorAll('.card');
+    if (oldCards.length === 0) {
+      el.innerHTML = html;
+      el.classList.add('fade-in');
+      return;
+    }
+
+    oldCards.forEach(c => {
+      c.style.opacity = '0';
+      c.style.transform = 'translateY(-6px)';
+    });
+    setTimeout(() => {
+      el.innerHTML = html;
+      el.classList.add('fade-in');
+    }, 180);
+  }
 }
 
 function showErr(err){
@@ -647,9 +881,9 @@ function showErr(err){
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', () => {
     init().catch(showErr);
-    setupBackToTop();
+    setupFabGroup();
   });
 } else {
   init().catch(showErr);
-  setupBackToTop();
+  setupFabGroup();
 }

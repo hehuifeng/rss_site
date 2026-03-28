@@ -1,5 +1,7 @@
 # RSS Paper Tracker
 
+点击[hehuifeng.github.io/rss_site/](hehuifeng.github.io/rss_site/)查看网站。
+
 一个纯前端的学术资讯聚合站。定时抓取 Nature 旗下多个期刊的 RSS，自动使用 [DashScope](https://dashscope.aliyuncs.com/compatible-mode/v1) 的 `qwen-flash` 模型翻译标题，并根据关键词为文章打标签。
 
 > 标签通过在标题和摘要中匹配关键词实现，因此结果不一定完全准确。
@@ -13,6 +15,9 @@
   - https://www.nature.com/natcancer.rss
   - https://www.nature.com/natmachintell.rss
   - https://www.nature.com/natcomputsci.rss
+  - https://www.nature.com/nrm.rss
+  - https://www.nature.com/nrg.rss
+  - https://www.nature.com/nrc.rss
 - 在“说明”页介绍项目目的、数据来源及关键词列表。
 - 使用 [sql.js](https://github.com/sql-js/sql.js) 存储抓取记录，无需后端即可运行。
 - 简洁现代的界面，文章卡片在鼠标悬停时高亮边框。

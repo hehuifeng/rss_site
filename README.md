@@ -1,6 +1,6 @@
 # RSS Paper Tracker
 
-点击[hehuifeng.github.io/rss_site/](hehuifeng.github.io/rss_site/)查看网站。
+点击[https://hehuifeng.github.io/rss_site/](https://hehuifeng.github.io/rss_site/)查看网站。
 
 一个纯前端的学术资讯聚合站。定时抓取 Nature 旗下多个期刊的 RSS，自动使用 [DashScope](https://dashscope.aliyuncs.com/compatible-mode/v1) 的 `qwen-flash` 模型翻译标题，并根据关键词为文章打标签。
 

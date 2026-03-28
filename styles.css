@@ -856,6 +856,60 @@ main {
 }
 .btn-bilingual.is-active::after { display: none; }
 
+/* ===== 全宽双语按钮（筛选区底部） ===== */
+.btn-bilingual-full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-gradient);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  color: var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--glass-shadow-diagonal);
+  filter: var(--glass-filter);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+.btn-bilingual-full::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: inherit;
+  border: 1px solid rgba(255,255,255,0.3);
+  filter: blur(1px);
+  pointer-events: none;
+}
+.btn-bilingual-full:hover {
+  background: linear-gradient(45deg,
+    rgba(37,99,235,0.15) 0%,
+    rgba(37,99,235,0.08) 25%,
+    rgba(37,99,235,0.08) 75%,
+    rgba(37,99,235,0.15) 100%);
+  border-color: var(--primary-border);
+}
+.btn-bilingual-full.is-active {
+  background: var(--primary);
+  border: none;
+  color: #fff;
+  box-shadow:
+    inset 2px -2px 1px -1px rgba(255,255,255,0.45),
+    inset -2px 2px 1px -1px rgba(255,255,255,0.45),
+    inset 0 0 1px rgba(0,0,0,0.15),
+    0 3px 8px rgba(37,99,235,0.25);
+  filter: none;
+}
+.btn-bilingual-full.is-active::after { display: none; }
+
 /* ===== Filter Labels ===== */
 .filter-hint {
   color: #475569;

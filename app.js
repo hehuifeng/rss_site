@@ -816,16 +816,34 @@ function render(items, kw, mode = 'filter') {
         const uid = card.dataset.uid;
         const oldH = oldHeights.get(uid);
         const newH = newHeights.get(uid);
+
+        // 高度弹性收缩（不清理，元素即将销毁）
         if (oldH != null && newH != null && Math.abs(newH - oldH) > 2) {
-          springProp(card, 'height', oldH + 'px', newH + 'px');
+          card.style.height = oldH + 'px';
+          void card.offsetHeight;
+          card.style.transition = `height 400ms ${SPRING}`;
+          card.style.height = newH + 'px';
         }
-        flipChildren(card, uid, oldCP, newCP);
+
+        // 子元素弹性上移（delta < 0 = 向上，不清理）
+        const oPos = oldCP.get(uid);
+        const nPos = newCP.get(uid);
+        if (oPos && nPos) {
+          const children = card.querySelectorAll(':scope > *');
+          const len = Math.min(oPos.length, nPos.length, children.length);
+          for (let i = 0; i < len; i++) {
+            const delta = nPos[i] - oPos[i];
+            if (Math.abs(delta) < 1) continue;
+            children[i].style.transition = `transform 400ms ${SPRING}`;
+            children[i].style.transform = `translateY(${delta}px)`;
+          }
+        }
       });
 
       setTimeout(() => {
         el.innerHTML = html;
         el.classList.remove('fade-in');
-      }, 420);
+      }, 480);
 
     } else {
       // ===== 开启双语：高度弹性 + 中文文字淡入 + 子元素弹性下移 =====

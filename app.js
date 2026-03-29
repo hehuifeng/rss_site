@@ -37,28 +37,47 @@ async function ensureSqlJs() {
   }
 }
 
-// ===== 访问量（挂全局，避免未定义）=====
-function trackVisits() {
+// ===== 真实访问统计（服务端计数）=====
+const _M = 'https://paper.huifeng.he.cn/api/metrics';
+
+function getUvId() {
+  const LS = window.localStorage;
+  const KEY = 'uv_id';
+  let id = LS.getItem(KEY);
+  if (!id) {
+    id = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+    LS.setItem(KEY, id);
+  }
+  return id;
+}
+
+function _beacon(url, obj) {
   try {
-    const LS = window.localStorage;
-    const PV_KEY = 'pv_total';
-    const UV_ID = 'uv_id';
-    const UV_TOTAL = 'uv_total';
+    navigator.sendBeacon(url, new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+  } catch (_) {}
+}
 
-    const pv = Number(LS.getItem(PV_KEY) || '0') + 1;
-    LS.setItem(PV_KEY, String(pv));
+function trackClick(action) {
+  _beacon(`${_M}/click`, { a: action });
+}
 
-    if (!LS.getItem(UV_ID)) {
-      LS.setItem(UV_ID, `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      const uv = Number(LS.getItem(UV_TOTAL) || '0') + 1;
-      LS.setItem(UV_TOTAL, String(uv));
-    }
-    const uv = Number(LS.getItem(UV_TOTAL) || '1');
+function trackVisits() {
+  _beacon(`${_M}/visit`, { uv_id: getUvId() });
+  fetchSiteStats();
+}
 
-    const bar = document.getElementById('site-stats');
-    if (bar) bar.textContent = `本站访问量（本机统计）：浏览 ${pv} · 访客 ${uv}`;
-  } catch (e) {
-    console.warn('访问量统计失败：', e);
+async function fetchSiteStats() {
+  const bar = document.getElementById('site-stats');
+  if (!bar) return;
+  try {
+    const res = await fetch(`${_M}/stats`, { signal: AbortSignal.timeout(3000) });
+    const d = await res.json();
+    const parts = [`浏览 ${d.pv || 0}`, `访客 ${d.uv || 0}`];
+    const acts = Object.entries(d.actions || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`);
+    if (acts.length) parts.push(acts.join(' · '));
+    bar.textContent = parts.join(' · ');
+  } catch (_) {
+    bar.textContent = '统计服务暂不可用';
   }
 }
 window.trackVisits = trackVisits;
@@ -271,6 +290,7 @@ async function init() {
   renderLastUpdated();
   bindEvents();
   updateBilingualButton();
+  setupClickTracking();
   window.trackVisits?.();
   runSearch();
 }
@@ -294,6 +314,29 @@ function setupFabGroup() {
 
   topBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+// ===== 全局按钮点击追踪 =====
+function setupClickTracking() {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    let action;
+    if (btn.classList.contains('tab')) action = 'tab';
+    else if (btn.classList.contains('tag-btn')) action = 'tag';
+    else if (btn.classList.contains('range-btn')) action = 'range';
+    else if (btn.classList.contains('pager-btn')) action = 'page';
+    else if (btn.classList.contains('pager-goto-btn')) action = 'goto';
+    else if (btn.classList.contains('btn-bilingual-full') || btn.classList.contains('btn-bilingual')) action = 'bilingual';
+    else if (btn.classList.contains('btn-reset-all')) action = 'reset_all';
+    else if (btn.id === 'reset') action = 'reset_search';
+    else if (btn.id === 'back-to-top') action = 'back_top';
+    else if (btn.id === 'empty-reset') action = 'reset_empty';
+    else action = btn.id || 'other';
+
+    trackClick(action);
   });
 }
 

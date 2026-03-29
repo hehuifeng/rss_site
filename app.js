@@ -51,18 +51,23 @@ function getUvId() {
   return id;
 }
 
-function _beacon(url, obj) {
+function _post(url, obj) {
   try {
-    navigator.sendBeacon(url, new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj),
+      keepalive: true,
+    }).catch(() => {});
   } catch (_) {}
 }
 
 function trackClick(action) {
-  _beacon(`${_M}/click`, { a: action });
+  _post(`${_M}/click`, { a: action });
 }
 
 function trackVisits() {
-  _beacon(`${_M}/visit`, { uv_id: getUvId() });
+  _post(`${_M}/visit`, { uv_id: getUvId() });
   fetchSiteStats();
 }
 

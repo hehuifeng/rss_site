@@ -5,3 +5,6 @@
 !.continue/rules
 
 .qodo/
+
+# Runtime metrics database
+data/metrics.db

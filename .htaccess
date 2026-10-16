@@ -1,0 +1,19 @@
+# Paper Tracker(paper.huifeng.he.cn 部署专用;GitHub Pages 忽略本文件)
+# 数据库文件的分发策略:
+# - 移除 .gz 的 Encoding 处理,确保以文件原样返回(前端自行 DecompressionStream 解压)
+# - 开放 CORS:前端多源回退需要从 GitHub Pages 跨源拉取本站数据
+# - 显式暴露 ETag 等验证器:Service Worker 后台更新时据此判断内容是否变化
+# - no-cache:始终带验证器再验证(配合 ETag 304,代价极低)
+
+RemoveEncoding .gz
+
+<FilesMatch "\.(db|db\.gz)$">
+  ForceType application/octet-stream
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Expose-Headers "ETag, Last-Modified, Content-Length"
+  Header set Cache-Control "no-cache"
+</FilesMatch>
+
+<Files "sw.js">
+  Header set Cache-Control "no-cache"
+</Files>

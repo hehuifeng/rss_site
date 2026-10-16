@@ -1,0 +1,11 @@
+# Continue
+.continue/
+.claude
+.continue/*
+!.continue/rules
+
+.qodo/
+
+# 运行时数据:数据库经 OSS/本机 Apache 分发,不进版本库
+# (metrics.db 为统计 API 的存储;rss_state.db[.gz] 每日由 cron 生成)
+data/

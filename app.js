@@ -118,6 +118,62 @@ async function fetchSiteStats() {
 }
 window.trackVisits = trackVisits;
 
+// ===== 「我来过」签到墙(服务端按 uv_id 去重,一人一计) =====
+async function setupBeenHere() {
+  const btn = document.getElementById('been-here-btn');
+  const numEl = document.getElementById('been-here-num');
+  const labelEl = document.getElementById('been-here-label');
+  if (!btn || !numEl || !labelEl) return;
+
+  let mySeq = Number(localStorage.getItem('pt_been_here_seq')) || 0;
+  if (mySeq) {
+    btn.classList.add('is-done');
+    labelEl.textContent = `我是第 ${mySeq} 位`;
+  }
+
+  try {
+    const res = await fetch(`${_M}/been_here`, { signal: AbortSignal.timeout(4000) });
+    const d = await res.json();
+    numEl.textContent = Number(d.total).toLocaleString();
+  } catch (_) {
+    numEl.textContent = '—';
+  }
+
+  function plusOne() {
+    const s = document.createElement('span');
+    s.className = 'bh-plus';
+    s.textContent = '+1';
+    btn.appendChild(s);
+    setTimeout(() => s.remove(), 1100);
+  }
+
+  btn.addEventListener('click', async () => {
+    if (btn.classList.contains('is-done')) return;
+    labelEl.textContent = '签到中…';
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${_M}/been_here`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uv_id: getUvId() }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      mySeq = d.my_seq;
+      localStorage.setItem('pt_been_here_seq', String(mySeq));
+      numEl.textContent = Number(d.total).toLocaleString();
+      btn.disabled = false;
+      btn.classList.add('is-done');
+      labelEl.textContent = `我是第 ${mySeq} 位`;
+      plusOne();
+    } catch (_) {
+      btn.disabled = false;
+      labelEl.textContent = '网络不畅,点我重试';
+    }
+  });
+}
+
 // ===== 工具函数 =====
 function fmtDate(s){ if(!s) return ''; const m = /^(\d{4}-\d{2}-\d{2})/.exec(s); return m? m[1] : s; }
 function escapeHtml(str){ return (str||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) }
@@ -478,6 +534,7 @@ async function initFromLoadStage() {
     bindEvents();          // popstate 监听在首次恢复之后注册
     updateBilingualButton();
     setupClickTracking();
+    setupBeenHere();
     window.trackVisits?.();
   } else {
     renderLastUpdated();

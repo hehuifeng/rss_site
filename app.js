@@ -118,23 +118,32 @@ async function fetchSiteStats() {
 }
 window.trackVisits = trackVisits;
 
-// ===== 「我来过」签到墙(服务端按 uv_id 去重,一人一计) =====
+// ===== 「我来过」签到墙(人次计数,可反复点) =====
 async function setupBeenHere() {
   const btn = document.getElementById('been-here-btn');
   const numEl = document.getElementById('been-here-num');
   const labelEl = document.getElementById('been-here-label');
+  const mineEl = document.getElementById('been-here-mine');
   if (!btn || !numEl || !labelEl) return;
 
-  let mySeq = Number(localStorage.getItem('pt_been_here_seq')) || 0;
-  if (mySeq) {
-    btn.classList.add('is-done');
-    labelEl.textContent = `我是第 ${mySeq} 位`;
+  let myClicks = Number(localStorage.getItem('pt_been_here_clicks')) || 0;
+  let lastSeq = Number(localStorage.getItem('pt_been_here_seq')) || 0;
+
+  function renderMine() {
+    if (myClicks > 0 && mineEl) {
+      mineEl.hidden = false;
+      mineEl.textContent = `你已签到 ${myClicks} 次，最近是第 ${lastSeq.toLocaleString()} 位`;
+    }
   }
+  if (myClicks > 0) labelEl.textContent = '再来一次';
+  renderMine();
 
   try {
     const res = await fetch(`${_M}/been_here`, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
-    numEl.textContent = Number(d.total).toLocaleString();
+    if (typeof d.total !== 'number') throw new Error('bad payload');
+    numEl.textContent = d.total.toLocaleString();
   } catch (_) {
     numEl.textContent = '—';
   }
@@ -148,9 +157,9 @@ async function setupBeenHere() {
   }
 
   btn.addEventListener('click', async () => {
-    if (btn.classList.contains('is-done')) return;
-    labelEl.textContent = '签到中…';
+    if (btn.disabled) return;
     btn.disabled = true;
+    labelEl.textContent = '签到中…';
     try {
       const res = await fetch(`${_M}/been_here`, {
         method: 'POST',
@@ -160,17 +169,20 @@ async function setupBeenHere() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
-      mySeq = d.my_seq;
-      localStorage.setItem('pt_been_here_seq', String(mySeq));
+      myClicks += 1;
+      lastSeq = d.my_seq;
+      localStorage.setItem('pt_been_here_clicks', String(myClicks));
+      localStorage.setItem('pt_been_here_seq', String(lastSeq));
       numEl.textContent = Number(d.total).toLocaleString();
-      btn.disabled = false;
-      btn.classList.add('is-done');
-      labelEl.textContent = `我是第 ${mySeq} 位`;
+      labelEl.textContent = '再来一次';
+      renderMine();
       plusOne();
+      btn.classList.add('is-lit');
+      setTimeout(() => btn.classList.remove('is-lit'), 700);
     } catch (_) {
-      btn.disabled = false;
-      labelEl.textContent = '网络不畅,点我重试';
+      labelEl.textContent = '网络不畅，点我重试';
     }
+    btn.disabled = false;
   });
 }
 

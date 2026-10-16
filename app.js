@@ -17,7 +17,6 @@ let TOTAL_PAGES = 1;
 const state = {
   bilingual: false,
   sort: 'date-desc',
-  expandAll: localStorage.getItem('pt_expand_abs') === '1',
 };
 let restoringFromPop = false; // popstate 恢复期间抑制 URL 回写
 
@@ -478,7 +477,6 @@ async function initFromLoadStage() {
     applyStateFromUrl();   // 必须在 populateFilters 之后(校验选项存在)
     bindEvents();          // popstate 监听在首次恢复之后注册
     updateBilingualButton();
-    updateExpandAllButton();
     setupClickTracking();
     window.trackVisits?.();
   } else {
@@ -560,11 +558,7 @@ function setupClickTracking() {
     else if (btn.id === 'reset') action = 'reset_search';
     else if (btn.id === 'back-to-top') action = 'back_top';
     else if (btn.id === 'empty-reset') action = 'reset_empty';
-    else if (btn.id === 'export-csv') action = 'export_csv';
-    else if (btn.id === 'export-bib') action = 'export_bib';
     else if (btn.classList.contains('copy-doi')) action = 'copy_doi';
-    else if (btn.id === 'toggle-abs') action = 'expand_toggle';
-    else if (btn.classList.contains('abs-toggle')) action = 'abs_toggle';
     else if (btn.id === 'db-retry') action = 'db_retry';
     else if (btn.id === 'update-toast') action = 'db_toast_refresh';
     else action = btn.id || 'other';
@@ -783,27 +777,8 @@ function bindEvents() {
     btn.addEventListener('click', () => setQuickRange(btn.dataset.range));
   });
 
-  // 摘要展开/收起(事件委托:单卡按钮)
-  const listEl = $('list');
-  if (listEl) listEl.addEventListener('click', (e) => {
-    const toggle = e.target.closest('.abs-toggle');
-    if (!toggle) return;
-    const abs = toggle.parentElement.querySelector('.abs');
-    if (!abs) return;
-    const collapsed = abs.classList.toggle('collapsed');
-    toggle.textContent = collapsed ? '展开' : '收起';
-  });
-
-  // 全部展开/收起摘要
-  const toggleAbs = $('toggle-abs');
-  if (toggleAbs) toggleAbs.onclick = () => {
-    state.expandAll = !state.expandAll;
-    localStorage.setItem('pt_expand_abs', state.expandAll ? '1' : '0');
-    updateExpandAllButton();
-    runSearch();
-  };
-
   // 复制 DOI(事件委托)
+  const listEl = $('list');
   if (listEl) listEl.addEventListener('click', async (e) => {
     const btn = e.target.closest('.copy-doi');
     if (!btn) return;
@@ -820,12 +795,6 @@ function bindEvents() {
       setTimeout(() => { btn.textContent = '复制'; }, 1500);
     }
   });
-
-  // 导出
-  const exportCsvBtn = $('export-csv');
-  if (exportCsvBtn) exportCsvBtn.onclick = () => exportResults('csv');
-  const exportBibBtn = $('export-bib');
-  if (exportBibBtn) exportBibBtn.onclick = () => exportResults('bibtex');
 
   // 键盘快捷键:/ 聚焦搜索、←/→ 翻页
   document.addEventListener('keydown', (e) => {
@@ -850,11 +819,6 @@ function bindEvents() {
       setTimeout(() => { restoringFromPop = false; }, 350); // 晚于 syncUrl 的 300ms 防抖窗口
     }
   });
-}
-
-function updateExpandAllButton() {
-  const btn = document.getElementById('toggle-abs');
-  if (btn) btn.textContent = state.expandAll ? '收起全部摘要' : '全部展开摘要';
 }
 
 // 简易防抖
@@ -1099,63 +1063,6 @@ function runSearch(animateMode = 'filter') {
   syncUrlDebounced();
 }
 
-// ===== 导出(按当前筛选全量) =====
-function exportResults(kind) {
-  const { where, params } = buildWhere();
-  const rows = query(`
-    SELECT uid, journal, type, topic_tag, pub_date, doi, article_url,
-           title_en, title_cn, abstract_en, abstract_cn
-    FROM articles
-    ${where}
-    ${orderByClause()}
-  `, params);
-
-  if (!rows.length) { alert('当前筛选没有可导出的结果'); return; }
-
-  const stamp = todayStr().replace(/-/g, '');
-  if (kind === 'csv') {
-    const esc = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-    const header = ['uid', 'journal', 'type', 'pub_date', 'doi', 'url', 'title_en', 'title_cn', 'abstract_en', 'abstract_cn'];
-    const lines = [header.join(',')];
-    rows.forEach(r => {
-      lines.push([
-        r.uid, r.journal, r.type, r.pub_date, r.doi, r.article_url,
-        r.title_en, r.title_cn, r.abstract_en, r.abstract_cn,
-      ].map(esc).join(','));
-    });
-    // ﻿ BOM:Excel 直接打开中文不乱码
-    downloadBlob('﻿' + lines.join('\r\n'), `paper-tracker-${stamp}.csv`, 'text/csv;charset=utf-8');
-  } else {
-    const bibEsc = (s) => String(s ?? '').replace(/([\\{}])/g, '\\$1');
-    const key = (s) => String(s ?? '').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const out = rows.map(r => {
-      const year = (fmtDate(r.pub_date) || '').slice(0, 4);
-      const fields = [
-        `title = {${bibEsc(r.title_en || r.title_cn || '')}}`,
-        `journal = {${bibEsc(r.journal || '')}}`,
-        year && `year = {${year}}`,
-        r.doi && `doi = {${bibEsc(r.doi)}}`,
-        r.article_url && `url = {${bibEsc(r.article_url)}}`,
-        r.title_cn && `note = {${bibEsc(r.title_cn)}}`,
-      ].filter(Boolean);
-      return `@article{${key(r.uid)},\n  ${fields.join(',\n  ')}\n}`;
-    }).join('\n\n');
-    downloadBlob(out, `paper-tracker-${stamp}.bib`, 'application/x-bibtex;charset=utf-8');
-  }
-}
-
-function downloadBlob(content, filename, mime) {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 // ===== FLIP 高度弹性动画 =====
 const SPRING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
@@ -1197,18 +1104,6 @@ function flipChildren(card, uid, oMap, nMap) {
   }
 }
 
-// 摘要默认折叠:渲染后测量,溢出才显示「展开」按钮
-function markOverflowingAbstracts(listEl) {
-  requestAnimationFrame(() => {
-    listEl.querySelectorAll('.abs.collapsed').forEach(abs => {
-      if (abs.scrollHeight > abs.clientHeight + 6) {
-        const btn = abs.parentElement.querySelector('.abs-toggle');
-        if (btn) btn.hidden = false;
-      }
-    });
-  });
-}
-
 function render(items, kw, mode = 'filter') {
   const el = document.getElementById('list');
 
@@ -1239,10 +1134,6 @@ function render(items, kw, mode = 'filter') {
     let titleHTML = '';
     let absHTML = '';
 
-    const absToggle = state.expandAll
-      ? ''
-      : `<button class="abs-toggle" type="button" hidden>展开</button>`;
-
     if (state.bilingual) {
       const ten = it.title_en ? `<div class="t-en">${highlightAndEscape(it.title_en, kw)}</div>` : '';
       const tcn = it.title_cn ? `<div class="t-cn">${highlightAndEscape(it.title_cn, kw)}</div>` : '';
@@ -1251,16 +1142,12 @@ function render(items, kw, mode = 'filter') {
       const hasTitle = ten || tcn;
       titleHTML = `<div class="title">${hasTitle ? (ten + tcn) : '(无标题)'}</div>`;
       const absContent = aen + acn;
-      absHTML = absContent
-        ? `<div class="abs-wrap"><div class="abs${state.expandAll ? '' : ' collapsed'}">${absContent}</div>${absToggle}</div>`
-        : '';
+      absHTML = absContent ? `<div class="abs">${absContent}</div>` : '';
     } else {
       const titlePref = it.title_en || it.title_cn || '(无标题)';
       const absPref   = it.abstract_en || it.abstract_cn || '';
       titleHTML = `<div class="title">${highlightAndEscape(titlePref, kw)}</div>`;
-      absHTML = absPref
-        ? `<div class="abs-wrap"><div class="abs${state.expandAll ? '' : ' collapsed'}">${highlightAndEscape(absPref, kw)}</div>${absToggle}</div>`
-        : '';
+      absHTML = absPref ? `<div class="abs">${highlightAndEscape(absPref, kw)}</div>` : '';
     }
 
     const doi = it.doi
@@ -1330,7 +1217,6 @@ function render(items, kw, mode = 'filter') {
       setTimeout(() => {
         el.innerHTML = html;
         el.classList.remove('fade-in');
-        markOverflowingAbstracts(el);
       }, 480);
 
     } else {
@@ -1351,7 +1237,6 @@ function render(items, kw, mode = 'filter') {
         }
         flipChildren(card, uid, oldCP, newCP);
       });
-      markOverflowingAbstracts(el);
 
       setTimeout(() => el.classList.remove('bilingual-anim'), 500);
     }
@@ -1363,7 +1248,6 @@ function render(items, kw, mode = 'filter') {
     if (oldCards.length === 0) {
       el.innerHTML = html;
       el.classList.add('fade-in');
-      markOverflowingAbstracts(el);
       return;
     }
 
@@ -1374,7 +1258,6 @@ function render(items, kw, mode = 'filter') {
     setTimeout(() => {
       el.innerHTML = html;
       el.classList.add('fade-in');
-      markOverflowingAbstracts(el);
     }, 180);
   }
 }

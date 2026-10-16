@@ -146,7 +146,6 @@ async function setupBeenHere() {
     }
   }
 
-  if (myClicks > 0) labelEl.textContent = '再来一次';
   renderMine();
   renderNum();
 
@@ -162,7 +161,7 @@ async function setupBeenHere() {
     })
     .catch(() => { if (total == null) numEl.textContent = '—'; });
 
-  function popFeedback() {
+  function popFeedback(seq) {
     const s = document.createElement('span');
     s.className = 'bh-plus';
     s.textContent = '+1';
@@ -172,16 +171,22 @@ async function setupBeenHere() {
     setTimeout(() => numEl.classList.remove('bump'), 200);
     btn.classList.add('is-lit');
     setTimeout(() => btn.classList.remove('is-lit'), 700);
+    // 每次点击短暂显示「第 N 位」,随后回到「我来过」
+    if (seq) {
+      labelEl.textContent = `第 ${seq.toLocaleString()} 位 ✓`;
+      clearTimeout(popFeedback._t);
+      popFeedback._t = setTimeout(() => { labelEl.textContent = '我来过'; }, 2000);
+    }
   }
 
   btn.addEventListener('click', () => {
     // 乐观更新:点击立即反馈,网络在后台确认(慢线路也不卡手)
     optimistic += 1;
     myClicks += 1;
-    labelEl.textContent = '再来一次';
+    lastSeq += 1; // 乐观名次,响应回来后校准
     renderNum();
     renderMine();
-    popFeedback();
+    popFeedback(lastSeq);
 
     fetch(`${_M}/been_here`, {
       method: 'POST',
@@ -203,10 +208,12 @@ async function setupBeenHere() {
       .catch(() => {
         optimistic = Math.max(0, optimistic - 1);
         myClicks = Math.max(0, myClicks - 1);
+        lastSeq = Math.max(0, lastSeq - 1);
         renderNum();
         renderMine();
-        labelEl.textContent = '刚才没记上,再点一下';
-        setTimeout(() => { labelEl.textContent = '再来一次'; }, 2500);
+        labelEl.textContent = '刚才没记上，再点一下';
+        clearTimeout(popFeedback._t);
+        setTimeout(() => { labelEl.textContent = '我来过'; }, 2500);
       });
   });
 }

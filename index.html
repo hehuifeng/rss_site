@@ -62,17 +62,19 @@
           <span class="header-subtitle">（基于 Nature RSS feed，数据自 2025 年 8 月 13 日起持续更新，暂不包含更早期文献。）</span>
         </div>
         <div class="header-actions">
-          <div class="been-here-top">
-            <button id="been-here-btn" class="been-here-btn" type="button" title="签到:已有 N 人次到访">
-              <span class="bh-hand" aria-hidden="true">👋</span>
-              <span id="been-here-label">我来过</span>
-              <span class="bh-badge" id="been-here-num">…</span>
-            </button>
-            <p id="been-here-mine" class="been-here-mine" hidden></p>
-          </div>
           <div id="db-updated" class="db-updated" aria-live="polite"></div>
         </div>
       </div>
+
+      <!-- 「我来过」签到(单独一行,人人可见) -->
+      <div class="been-here-row" aria-label="到访签到">
+        <button id="been-here-btn" class="been-here-btn" type="button">
+          <span class="bh-hand" aria-hidden="true">👋</span>
+          <span id="been-here-label">我来过</span>
+        </button>
+        <p class="been-here-count">已有 <span id="been-here-num">…</span> 人次到这里看过论文</p>
+      </div>
+      <p id="been-here-mine" class="been-here-mine" hidden></p>
 
       <div class="controls">
         <!-- Row 1: Search Input -->

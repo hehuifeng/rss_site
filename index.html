@@ -62,6 +62,14 @@
           <span class="header-subtitle">（基于 Nature RSS feed，数据自 2025 年 8 月 13 日起持续更新，暂不包含更早期文献。）</span>
         </div>
         <div class="header-actions">
+          <div class="been-here-top">
+            <button id="been-here-btn" class="been-here-btn" type="button" title="签到:已有 N 人次到访">
+              <span class="bh-hand" aria-hidden="true">👋</span>
+              <span id="been-here-label">我来过</span>
+              <span class="bh-badge" id="been-here-num">…</span>
+            </button>
+            <p id="been-here-mine" class="been-here-mine" hidden></p>
+          </div>
           <div id="db-updated" class="db-updated" aria-live="polite"></div>
         </div>
       </div>
@@ -222,16 +230,6 @@
       <h2>快捷键</h2>
       <p class="tag-note"><code>/</code> 聚焦搜索框 · <code>←</code> / <code>→</code> 翻页 · <code>Esc</code> 之外的键盘习惯与浏览器一致</p>
     </main>
-  </section>
-
-  <!-- 「我来过」签到墙(人次计数,可反复点) -->
-  <section class="been-here" aria-label="到访签到">
-    <p class="been-here-count">已有 <span id="been-here-num">…</span> 人次到这里看过论文</p>
-    <button id="been-here-btn" class="been-here-btn" type="button">
-      <span class="bh-hand" aria-hidden="true">👋</span>
-      <span id="been-here-label">我来过</span>
-    </button>
-    <p id="been-here-mine" class="been-here-mine" hidden></p>
   </section>
 
   <footer>

@@ -1172,35 +1172,21 @@ mark {
   background: rgba(220,38,38,0.06);
 }
 
-/* ===== 我来过(签到墙) ===== */
-.been-here {
-  max-width: var(--maxw);
-  margin: 8px auto 0;
-  padding: 28px 16px 8px;
+/* ===== 我来过(页头签到,乐观更新) ===== */
+.been-here-top {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-.been-here-count {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-#been-here-num {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-size: 16px;
+  align-items: flex-end;
+  gap: 4px;
 }
 .been-here-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 46px;
-  padding: 0 28px;
-  font-size: 15px;
+  gap: 7px;
+  height: 40px;
+  padding: 0 14px 0 16px;
+  font-size: 14px;
   font-weight: 600;
   border-radius: var(--radius-pill);
   border: var(--glass-border);
@@ -1213,11 +1199,12 @@ mark {
   filter: var(--glass-filter);
   transition: all var(--transition-base);
   overflow: visible;
+  white-space: nowrap;
 }
 .been-here-btn::after {
   content: '';
   position: absolute;
-  inset: 4px;
+  inset: 3px;
   border-radius: inherit;
   border: 1px solid rgba(255,255,255,0.3);
   filter: blur(1px);
@@ -1225,11 +1212,26 @@ mark {
 }
 .been-here-btn:hover {
   border-color: var(--primary-border);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--glass-shadow-hover);
 }
-.been-here-btn:active { transform: scale(0.96); }
-/* 点击瞬间的点亮脉冲(可反复点,每次都有反馈) */
+.been-here-btn:active { transform: scale(0.95); }
+/* 计数徽章 */
+.bh-badge {
+  min-width: 26px;
+  text-align: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.35);
+  transition: transform var(--transition-fast);
+}
+.bh-badge.bump { transform: scale(1.25); }
+/* 点击瞬间的点亮脉冲 */
 .been-here-btn.is-lit {
   border: none;
   background: linear-gradient(45deg, var(--primary) 0%, var(--primary-light) 100%);
@@ -1237,14 +1239,15 @@ mark {
   filter: none;
   box-shadow:
     inset 0 0 2px rgba(0,0,0,0.15),
-    0 6px 20px rgba(37,99,235,0.35);
+    0 5px 18px rgba(37,99,235,0.35);
 }
 .been-here-btn.is-lit::after { display: none; }
-.bh-hand { font-size: 18px; }
+.been-here-btn.is-lit .bh-badge { background: rgba(255,255,255,0.25); }
+.bh-hand { font-size: 16px; }
 .been-here-btn.is-lit .bh-hand { animation: bhWave 0.8s ease; }
 @keyframes bhWave {
   0% { transform: rotate(0deg); }
-  25% { transform: rotate(-18deg) scale(1.15); }
+  25% { transform: rotate(-18deg) scale(1.2); }
   50% { transform: rotate(12deg) scale(1.1); }
   75% { transform: rotate(-8deg); }
   100% { transform: rotate(0deg); }
@@ -1252,9 +1255,9 @@ mark {
 /* +1 飘字 */
 .bh-plus {
   position: absolute;
-  top: -6px;
-  right: -4px;
-  font-size: 15px;
+  top: -8px;
+  right: 6px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--primary);
   pointer-events: none;
@@ -1267,12 +1270,9 @@ mark {
 }
 .been-here-mine {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
-}
-.been-here-count .my-rank {
-  color: var(--primary);
-  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ===== Footer ===== */
@@ -1390,6 +1390,7 @@ footer {
   .nav-title { font-size: 16px; }
   .search-header { padding: 16px 12px 0; }
   .header-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .been-here-top { align-items: flex-start; }
   .header-title { font-size: 22px; }
   .row-filters {
     flex-direction: column;

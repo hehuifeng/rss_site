@@ -3,10 +3,8 @@
 // Service Worker 负责壳与数据库缓存(sw.js);筛选状态同步到 URL query。
 
 // ===== 配置 =====
-// 阿里云 OSS 主数据源(配置后填入,如:
-//   https://paper-tracker-data.oss-cn-hangzhou.aliyuncs.com/rss_state/rss_state.db.gz
-// 留空时自动跳过该候选,顺序使用下方回退源)
-const OSS_DB_URL = '';
+// 阿里云 OSS 主数据源(每日 06:00 cron 上传;bucket 公共读,CORS 限定两个站点来源)
+const OSS_DB_URL = 'https://paper-tracker-data.oss-cn-shanghai.aliyuncs.com/rss_state/rss_state.db.gz';
 const FALLBACK_DB_URL = 'https://paper.huifeng.he.cn/data/rss_state.db.gz';
 
 let db, SQL;
@@ -246,7 +244,7 @@ function animateCount(el, target) {
 function buildCandidates() {
   const cands = [];
   if (OSS_DB_URL) {
-    cands.push({ url: OSS_DB_URL, label: '阿里云 OSS', ttfb: 5000, stall: 20000, hard: 90000 });
+    cands.push({ url: OSS_DB_URL, label: '阿里云 OSS', ttfb: 8000, stall: 20000, hard: 90000 });
   }
   cands.push({
     url: new URL('./data/rss_state.db.gz', location.href).href,

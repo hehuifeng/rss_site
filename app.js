@@ -250,11 +250,13 @@ function buildCandidates() {
   }
   cands.push({
     url: new URL('./data/rss_state.db.gz', location.href).href,
-    label: '同源镜像', ttfb: 4000, stall: 20000, hard: 60000,
+    // 注意:自建域名前置 Cloudflare 免费版,国内访问绕海外回源,TTFB 可能 5-10s,
+    // 预算需放宽(stall 看门狗只看相邻 chunk 间隔,持续慢速下载不会被误杀)
+    label: '同源镜像', ttfb: 12000, stall: 25000, hard: 120000,
   });
   cands.push({
     url: FALLBACK_DB_URL,
-    label: '备用线路', ttfb: 8000, stall: 30000, hard: 120000,
+    label: '备用线路', ttfb: 20000, stall: 30000, hard: 180000,
   });
   // 老浏览器(无 DecompressionStream):追加未压缩同源文件(仅自建部署存在)
   if (!('DecompressionStream' in window)) {

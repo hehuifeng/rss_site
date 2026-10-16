@@ -5,11 +5,12 @@
  * - 其余请求(metrics API、外链)一律放行,绝不缓存
  * 注意:每次修改本文件必须 bump VERSION,否则客户端不会更新
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `pt-shell-${VERSION}`;
 const DB_CACHE = `pt-db-${VERSION}`;
-const META_CACHE = `pt-meta-${VERSION}`; // 每个 db URL 的上次 revalidate 时间戳
-const DB_PATTERN = /\/rss_state\.db(\.gz)?$/;
+const META_CACHE = `pt-meta-${VERSION}`; // 每个 URL 的上次 revalidate 时间戳
+// 数据库 + sql.js 引擎文件(引擎现从 OSS 加载,同源 wasm 已不在壳内)
+const DB_PATTERN = /\/(rss_state\.db(\.gz)?|sql-wasm\.wasm)$/;
 const REVALIDATE_INTERVAL = 6 * 3600e3;
 
 // 全部相对 sw.js 所在位置书写:GH Pages 项目页与自建域名共用同一份文件
@@ -19,7 +20,6 @@ const SHELL_ASSETS = [
   './styles.css',
   './app.js',
   './sql-wasm.js',
-  './sql-wasm.wasm',
   './favicon.svg',
   './manifest.webmanifest',
 ];

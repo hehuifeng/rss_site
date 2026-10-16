@@ -6,6 +6,9 @@
 // 阿里云 OSS 主数据源(每日 06:00 cron 上传;bucket 公共读,CORS 限定两个站点来源)
 const OSS_DB_URL = 'https://paper-tracker-data.oss-cn-shanghai.aliyuncs.com/rss_state/rss_state.db.gz';
 const FALLBACK_DB_URL = 'https://paper.huifeng.he.cn/data/rss_state.db.gz';
+// sql.js 引擎(654KB wasm)也从 OSS 拉:paper.huifeng.he.cn 同源路径前置 CF 免费版,
+// 晚高峰国际链路拥堵时 654KB 会卡死在「正在初始化数据库引擎」(OSS 上海直连毫秒级)
+const OSS_ENGINE_BASE = 'https://paper-tracker-data.oss-cn-shanghai.aliyuncs.com/engine/';
 
 let db, SQL;
 let PAGE = 1, PAGE_SIZE = 30;
@@ -36,7 +39,22 @@ function updateBilingualButton() {
 }
 
 // ===== 自包含 sql.js 加载 =====
-function locateFile(file) { return './' + file; }
+// 引擎 wasm(654KB):优先 OSS(上海直连,毫秒级;paper 站同源路径前置 CF 免费版,
+// 晚高峰国际链路拥堵会卡死),失败回落同源副本(仓库自带,无 CORS 问题)
+async function loadEngineBinary() {
+  // 本地开发(localhost/127.0.0.1)不在 OSS CORS 白名单,直接走同源省一次无谓报错
+  const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  const candidates = isLocal
+    ? ['./sql-wasm.wasm']
+    : [OSS_ENGINE_BASE + 'sql-wasm.wasm', './sql-wasm.wasm'];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return await res.arrayBuffer();
+    } catch (_) {}
+  }
+  throw new Error('sql-wasm.wasm 加载失败(OSS 与同源均不可达)');
+}
 async function ensureSqlJs() {
   if (typeof initSqlJs === 'function') return;
   await new Promise((resolve, reject) => {
@@ -419,9 +437,10 @@ window.__showDbUpdateToast = showDbUpdateToast;
 async function init() {
   const progressEl = document.getElementById('db-loading-progress');
 
-  if (progressEl) progressEl.textContent = '正在初始化数据库引擎...';
+  if (progressEl) progressEl.textContent = '正在加载数据库引擎(~0.7MB)...';
   await ensureSqlJs();
-  SQL = await initSqlJs({ locateFile });
+  const wasmBinary = await loadEngineBinary();
+  SQL = await initSqlJs({ wasmBinary });
 
   await waitSwControlOrTimeout(1200);
   await initFromLoadStage();

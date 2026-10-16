@@ -130,6 +130,9 @@ async function setupBeenHere() {
   let optimistic = 0; // 已乐观 +1 但未确认的次数
   let myClicks = Number(localStorage.getItem('pt_been_here_clicks')) || 0;
   let lastSeq = Number(localStorage.getItem('pt_been_here_seq')) || 0;
+  // 首屏立即显示上次缓存的总数,后台再校准(慢线路上徽章不至于空白)
+  const cachedTotal = Number(localStorage.getItem('pt_bh_total'));
+  if (Number.isFinite(cachedTotal) && cachedTotal > 0) total = cachedTotal;
 
   function renderNum() {
     const n = total == null ? null : total + optimistic;
@@ -154,9 +157,10 @@ async function setupBeenHere() {
       const d = await res.json();
       if (typeof d.total !== 'number') throw new Error('bad payload');
       total = d.total;
+      localStorage.setItem('pt_bh_total', String(total));
       renderNum();
     })
-    .catch(() => { numEl.textContent = '—'; });
+    .catch(() => { if (total == null) numEl.textContent = '—'; });
 
   function popFeedback() {
     const s = document.createElement('span');

@@ -603,7 +603,7 @@ main {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 8px;
+  margin: 0 0 12px;
   line-height: 1.5;
   transition: color var(--transition-fast);
 }
@@ -616,7 +616,7 @@ main {
   align-items: center;
   color: var(--text-tertiary);
   font-size: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .meta strong {
   color: var(--text-secondary);
@@ -630,10 +630,10 @@ main {
 .meta a:hover { text-decoration: underline; }
 
 .abs {
-  color: var(--text-secondary);
+  color: #334155;
   font-size: 14px;
   line-height: 1.7;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .badge {
@@ -669,7 +669,7 @@ main {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 8px 0;
+  margin: 10px 0;
 }
 .tag-chip {
   display: inline-flex;
@@ -1337,11 +1337,21 @@ footer {
       0 2px 8px rgba(0,0,0,0.4);
   }
   .tab:hover, .tab.active { background: rgba(148,163,184,0.12); }
+  /* 深色玻璃:描边提亮保证轮廓可见;角部高光 + 中段深色半透明表面,
+     让背景彩斑透进卡片,找回浅色版那种「透光」质感 */
   .card {
-    border-color: rgba(148,163,184,0.16);
+    border-color: rgba(148,163,184,0.22);
+    background: linear-gradient(
+      45deg,
+      rgba(148,163,184,0.16) 0%,
+      rgba(15,23,42,0.30) 22%,
+      rgba(15,23,42,0.30) 78%,
+      rgba(148,163,184,0.16) 100%
+    );
   }
-  .card::after { border-color: rgba(255,255,255,0.08); }
+  .card::after { border-color: rgba(255,255,255,0.10); }
   .card::before { border-color: rgba(0,0,0,0.3); }
+  .abs { color: #cbd5e1; }
   .btn-reset:hover { background: rgba(148,163,184,0.15); }
   .range-btn:hover, .pager-btn:hover:not(:disabled) {
     background: linear-gradient(45deg,
@@ -1359,8 +1369,9 @@ footer {
     background: linear-gradient(45deg, rgba(148,163,184,0.12) 0%, transparent 25%, transparent 75%, rgba(148,163,184,0.12) 100%);
     border-color: rgba(148,163,184,0.18);
   }
+  /* 深色下的搜索高亮:琥珀底更沉稳,不刺眼 */
   mark {
-    background: rgba(250,204,21,0.28);
+    background: rgba(202,138,4,0.22);
     color: inherit;
   }
   .pager { border-top-color: rgba(148,163,184,0.10); }
@@ -1413,6 +1424,7 @@ footer {
   .search-input-wrapper #q { height: 44px; font-size: 14px; }
   .tab { padding: 8px 10px; font-size: 13px; }
   .tab-icon { display: none; }
+  .filter-date-group { width: 100%; } /* 窄屏日期组占满行,两个输入框平分,点按更从容 */
   .range-btn { flex: 1; min-width: 0; text-align: center; justify-content: center; }
   .pager { flex-wrap: wrap; gap: 8px; }
   .pager-btn { flex: 1; justify-content: center; min-width: 0; }

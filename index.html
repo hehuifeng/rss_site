@@ -5,8 +5,22 @@
   <title>Paper Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Nature 系列期刊论文聚合检索平台" />
-  <meta name="theme-color" content="#e4e9f2" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#e4e9f2" />
+  <!-- 首屏前同步设置主题,避免深色用户看到白闪 -->
+  <script>
+    (function () {
+      try {
+        var m = localStorage.getItem('pt_theme') || 'auto';
+        var dark = m === 'dark' ||
+          (m === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#0b1220' : '#e4e9f2');
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
@@ -50,6 +64,7 @@
         </svg>
         说明
       </button>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换主题"></button>
     </div>
   </nav>
 

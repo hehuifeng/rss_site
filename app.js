@@ -26,6 +26,50 @@ const TYPE_CANON = {
   'Research Briefings': 'Research Briefing',
 };
 
+// ===== 主题切换(自动 / 浅色 / 深色 三态,记住选择) =====
+const THEME_KEY = 'pt_theme';
+const THEME_ICONS = {
+  auto: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 2a6 6 0 000 12V4z" fill-rule="evenodd"/></svg>',
+  light: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.95 2.05a1 1 0 010 1.41l-.7.71a1 1 0 11-1.42-1.42l.71-.7a1 1 0 011.41 0zM18 9a1 1 0 110 2h-1a1 1 0 110-2h1zm-2.75 4.24a1 1 0 011.42 1.42l-.71.7a1 1 0 01-1.41-1.41l.7-.71zM10 15a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-4.24-1.34l-.71.71a1 1 0 01-1.41-1.42l.7-.7a1 1 0 011.42 1.41zM4 10a1 1 0 01-1 1H2a1 1 0 110-2h1a1 1 0 011 1zm.34-4.24a1 1 0 011.42-1.42l.7.71A1 1 0 015.05 6.46l-.71-.7zM10 6a4 4 0 100 8 4 4 0 000-8z" clip-rule="evenodd"/></svg>',
+  dark: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.29 14.4A8 8 0 016.6 3.7a8.02 8.02 0 1010.7 10.7z"/></svg>',
+};
+const THEME_NAMES = { auto: '跟随系统', light: '浅色', dark: '深色' };
+
+function themeMode() {
+  return localStorage.getItem(THEME_KEY) || 'auto';
+}
+
+function applyTheme(mode) {
+  const dark = mode === 'dark' ||
+    (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0b1220' : '#e4e9f2');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    btn.innerHTML = THEME_ICONS[mode] || THEME_ICONS.auto;
+    const label = `主题：${THEME_NAMES[mode]}（点击切换）`;
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+}
+
+function setupThemeToggle() {
+  applyTheme(themeMode());
+  // 「跟随系统」模式下,系统切换时实时响应
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
+    if (themeMode() === 'auto') applyTheme('auto');
+  });
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const order = ['auto', 'light', 'dark'];
+    const next = order[(order.indexOf(themeMode()) + 1) % order.length];
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+
 // ===== 双语按钮 =====
 function updateBilingualButton() {
   const biBtn = document.getElementById('bilingual-toggle-float');
@@ -1377,8 +1421,10 @@ if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', () => {
     init().catch(showLoadError);
     setupFabGroup();
+    setupThemeToggle();
   });
 } else {
   init().catch(showLoadError);
   setupFabGroup();
+  setupThemeToggle();
 }

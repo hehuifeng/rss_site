@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>访客分析 · Paper Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <script>
+    (function () {
+      try {
+        var m = localStorage.getItem('pt_theme') || 'auto';
+        var dark = m === 'dark' ||
+          (m === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch (e) { document.documentElement.dataset.theme = 'light'; }
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --panel: #ffffff;
+      --panel-2: #f4f7fb;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #2563eb;
+      --card-shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 8px 24px -12px rgba(15, 23, 42, .18);
+    }
+    :root[data-theme="dark"] {
+      --bg: #0b1220;
+      --panel: rgba(255, 255, 255, .04);
+      --panel-2: rgba(255, 255, 255, .06);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: rgba(255, 255, 255, .09);
+      --accent: #60a5fa;
+      --card-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .6);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+    header.top {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+    }
+    header.top h1 { font-size: 20px; margin: 0; }
+    header.top .sub { color: var(--muted); font-size: 13px; }
+    .auth { display: flex; gap: 8px; align-items: center; }
+    .auth input {
+      padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--panel); color: var(--text); font-size: 14px; min-width: 240px;
+    }
+    .auth input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    button {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--accent); color: #fff; font-size: 14px; cursor: pointer;
+    }
+    button.ghost { background: transparent; color: var(--text); }
+    .err { color: #f87171; font-size: 13px; margin-top: 8px; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; box-shadow: var(--card-shadow);
+    }
+    .card .num { font-size: 26px; font-weight: 700; display: block; line-height: 1.2; }
+    .card .lbl { font-size: 13px; color: var(--muted); }
+
+    .map {
+      width: 100%; height: 520px; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--card-shadow);
+      margin-bottom: 16px;
+    }
+    @media (max-width: 640px) { .map { height: 380px; } }
+
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; box-shadow: var(--card-shadow);
+    }
+    .panel h2 { font-size: 15px; margin: 0 0 12px; }
+    ol.prov { list-style: none; margin: 0; padding: 0; }
+    ol.prov li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    ol.prov li:last-child { border-bottom: none; }
+    ol.prov .bar {
+      height: 8px; border-radius: 4px; background: var(--accent);
+      opacity: .85; margin-right: 10px;
+    }
+    ol.prov .nm { flex: 1; }
+    ol.prov .ct { color: var(--muted); font-variant-numeric: tabular-nums; }
+    ul.recent { list-style: none; margin: 0; padding: 0; }
+    ul.recent li { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    ul.recent li:last-child { border-bottom: none; }
+    ul.recent .t { color: var(--muted); font-size: 12px; }
+    ul.recent .loc { font-weight: 600; }
+    ul.recent .meta { color: var(--muted); word-break: break-all; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <h1>访客分析</h1>
+        <div class="sub">「我来过」签到地理分布 · 仅站长可见</div>
+      </div>
+      <div class="auth">
+        <div id="auth-form" hidden>
+          <input id="key-input" type="password" placeholder="输入管理员密钥" autocomplete="off" />
+          <button id="key-btn">进入</button>
+        </div>
+        <div id="auth-ok" hidden>
+          <span class="muted" style="margin-right:8px">已连接</span>
+          <button id="refresh-btn" class="ghost">刷新</button>
+          <button id="logout-btn" class="ghost">退出</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="auth-error" class="err" hidden></div>
+
+    <main id="dashboard" hidden>
+      <div class="cards">
+        <div class="card"><span class="num" id="c-total">…</span><span class="lbl">总签到人次</span></div>
+        <div class="card"><span class="num" id="c-ips">…</span><span class="lbl">去重 IP</span></div>
+        <div class="card"><span class="num" id="c-uvs">…</span><span class="lbl">去重访客</span></div>
+        <div class="card"><span class="num" id="c-range" style="font-size:16px">…</span><span class="lbl">统计时间范围</span></div>
+      </div>
+      <div id="map" class="map"></div>
+      <div class="cols">
+        <section class="panel">
+          <h2>地区分布</h2>
+          <ol class="prov" id="prov-list"></ol>
+        </section>
+        <section class="panel">
+          <h2>最近访客</h2>
+          <ul class="recent" id="recent-list"></ul>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://registry.npmmirror.com/echarts/5.5.0/files/dist/echarts.min.js"></script>
+  <script>window.echarts || document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');</script>
+  <script>
+    (function () {
+      var KEY_STORE = 'pt_admin_key';
+      var authForm = document.getElementById('auth-form');
+      var authOk = document.getElementById('auth-ok');
+      var keyInput = document.getElementById('key-input');
+      var authError = document.getElementById('auth-error');
+      var dashboard = document.getElementById('dashboard');
+      var mapEl = document.getElementById('map');
+      var chart = null;
+
+      function isDark() {
+        return document.documentElement.dataset.theme === 'dark';
+      }
+
+      function fmtTime(ts) {
+        if (!ts) return '—';
+        var d = new Date(ts * 1000);
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+          ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      }
+
+      function fmtDate(ts) {
+        if (!ts) return '—';
+        var d = new Date(ts * 1000);
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+      }
+
+      function showAuth() {
+        authForm.hidden = false;
+        authOk.hidden = true;
+        dashboard.hidden = true;
+        if (chart) { chart.dispose(); chart = null; }
+      }
+
+      function showOk() {
+        authForm.hidden = true;
+        authOk.hidden = false;
+      }
+
+      function fail(msg) {
+        authError.textContent = msg;
+        authError.hidden = false;
+        localStorage.removeItem(KEY_STORE);
+        showAuth();
+      }
+
+      function fetchGeo(key) {
+        return fetch('/api/metrics/geo?key=' + encodeURIComponent(key), {
+          signal: AbortSignal.timeout(8000)
+        }).then(function (res) {
+          if (res.status === 403) throw new Error('forbidden');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        });
+      }
+
+      function loadChinaGeo() {
+        return fetch('./data/china.json', { signal: AbortSignal.timeout(8000) })
+          .then(function (r) { return r.json(); });
+      }
+
+      function render(data, geo) {
+        if (typeof echarts === 'undefined') {
+          authError.textContent = 'ECharts 加载失败，请刷新重试';
+          authError.hidden = false;
+          return;
+        }
+        dashboard.hidden = false;
+
+        // 汇总
+        document.getElementById('c-total').textContent = data.summary.total.toLocaleString();
+        document.getElementById('c-ips').textContent = data.summary.ips.toLocaleString();
+        document.getElementById('c-uvs').textContent = data.summary.uvs.toLocaleString();
+        document.getElementById('c-range').textContent =
+          fmtDate(data.summary.first_ts) + ' ~ ' + fmtDate(data.summary.last_ts);
+
+        // 省份排行(含海外/未知)
+        var provList = document.getElementById('prov-list');
+        provList.innerHTML = '';
+        var maxVal = 0;
+        data.provinces.forEach(function (p) { maxVal = Math.max(maxVal, p.value); });
+        data.provinces.forEach(function (p) {
+          var li = document.createElement('li');
+          var bar = document.createElement('span');
+          bar.className = 'bar';
+          bar.style.width = (maxVal ? Math.round(p.value / maxVal * 100) : 0) + '%';
+          var nm = document.createElement('span');
+          nm.className = 'nm';
+          nm.textContent = p.name;
+          var ct = document.createElement('span');
+          ct.className = 'ct';
+          ct.textContent = p.value.toLocaleString();
+          li.appendChild(bar);
+          li.appendChild(nm);
+          li.appendChild(ct);
+          provList.appendChild(li);
+        });
+
+        // 最近访客
+        var recentList = document.getElementById('recent-list');
+        recentList.innerHTML = '';
+        if (!data.recent.length) {
+          recentList.innerHTML = '<li class="muted">暂无记录</li>';
+        }
+        data.recent.forEach(function (r) {
+          var li = document.createElement('li');
+          var loc = [r.region, r.city, r.isp].filter(Boolean).join(' · ') || '未知';
+          var t = document.createElement('div');
+          t.className = 't';
+          t.textContent = fmtTime(r.ts);
+          var l = document.createElement('div');
+          l.className = 'loc';
+          l.textContent = loc + (r.ip ? '（' + r.ip + '）' : '');
+          var m = document.createElement('div');
+          m.className = 'meta';
+          m.textContent = r.ua || '';
+          li.appendChild(t);
+          li.appendChild(l);
+          li.appendChild(m);
+          recentList.appendChild(li);
+        });
+
+        // 地图:只画中国省份(过滤海外/未知)
+        echarts.registerMap('china', geo);
+        var mapData = data.provinces.filter(function (p) {
+          return p.name !== '海外' && p.name !== '未知';
+        });
+        var dark = isDark();
+        if (!chart) chart = echarts.init(mapEl);
+        chart.setOption({
+          backgroundColor: 'transparent',
+          tooltip: {
+            trigger: 'item',
+            formatter: function (params) {
+              return params.name + '：' + (params.value || 0).toLocaleString() + ' 次';
+            }
+          },
+          visualMap: {
+            min: 0,
+            max: maxVal || 1,
+            left: 12,
+            bottom: 12,
+            text: ['多', '少'],
+            calculable: true,
+            textStyle: { color: dark ? '#cbd5e1' : '#475569' },
+            inRange: {
+              color: dark
+                ? ['#1e3a5f', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd']
+                : ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0369a1']
+            }
+          },
+          series: [{
+            name: '访客',
+            type: 'map',
+            map: 'china',
+            roam: true,
+            label: { show: true, fontSize: 10, color: dark ? '#cbd5e1' : '#334155' },
+            itemStyle: { areaColor: dark ? 'rgba(255,255,255,.04)' : '#f1f5f9', borderColor: dark ? 'rgba(255,255,255,.15)' : '#cbd5e1' },
+            emphasis: { label: { color: dark ? '#fff' : '#0f172a' }, itemStyle: { areaColor: '#f59e0b' } },
+            data: mapData
+          }]
+        });
+        chart.resize();
+      }
+
+      function load(key) {
+        authError.hidden = true;
+        Promise.all([fetchGeo(key), loadChinaGeo()])
+          .then(function (rs) { render(rs[0], rs[1]); showOk(); })
+          .catch(function (e) {
+            if (e && e.message === 'forbidden') fail('密钥错误，请重试');
+            else fail('加载失败：' + (e && e.message ? e.message : e));
+          });
+      }
+
+      document.getElementById('key-btn').addEventListener('click', function () {
+        var k = keyInput.value.trim();
+        if (!k) return;
+        localStorage.setItem(KEY_STORE, k);
+        load(k);
+      });
+      keyInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') document.getElementById('key-btn').click();
+      });
+      document.getElementById('refresh-btn').addEventListener('click', function () {
+        load(localStorage.getItem(KEY_STORE));
+      });
+      document.getElementById('logout-btn').addEventListener('click', function () {
+        localStorage.removeItem(KEY_STORE);
+        showAuth();
+      });
+
+      window.addEventListener('resize', function () {
+        if (chart) chart.resize();
+      });
+      // 系统深浅色切换时重绘地图配色
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener &&
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+          if (localStorage.getItem('pt_theme') === 'auto' && dashboard.hidden === false) {
+            location.reload();
+          }
+        });
+
+      // 启动
+      var saved = localStorage.getItem(KEY_STORE);
+      if (saved) load(saved);
+      else showAuth();
+    })();
+  </script>
+</body>
+</html>

@@ -204,7 +204,7 @@
 
       function fetchGeo(key) {
         return fetch('/api/metrics/geo?key=' + encodeURIComponent(key), {
-          signal: AbortSignal.timeout(8000)
+          signal: AbortSignal.timeout(25000)
         }).then(function (res) {
           if (res.status === 403) throw new Error('forbidden');
           if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -213,7 +213,7 @@
       }
 
       function loadChinaGeo() {
-        return fetch('./data/china.json', { signal: AbortSignal.timeout(8000) })
+        return fetch('./data/china.json', { signal: AbortSignal.timeout(25000) })
           .then(function (r) { return r.json(); });
       }
 
@@ -321,9 +321,18 @@
         chart.resize();
       }
 
+      // geo 失败自动重试一次(Cloudflare 回源慢,首次可能超时)
+      function fetchGeoRetry(key, tries) {
+        tries = tries || 0;
+        return fetchGeo(key).catch(function (e) {
+          if (tries < 1) return fetchGeoRetry(key, tries + 1);
+          throw e;
+        });
+      }
+
       function load(key) {
         authError.hidden = true;
-        Promise.all([fetchGeo(key), loadChinaGeo()])
+        Promise.all([fetchGeoRetry(key), loadChinaGeo()])
           .then(function (rs) { render(rs[0], rs[1]); showOk(); })
           .catch(function (e) {
             if (e && e.message === 'forbidden') fail('密钥错误，请重试');

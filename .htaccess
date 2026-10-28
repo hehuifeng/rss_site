@@ -17,3 +17,8 @@ RemoveEncoding .gz
 <Files "sw.js">
   Header set Cache-Control "no-cache"
 </Files>
+
+# 中国地图 GeoJSON:静态不变,允许 Cloudflare 边缘长缓存(避免每次回源慢)
+<Files "china.json">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</Files>
